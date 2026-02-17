@@ -22,30 +22,12 @@ library(tictoc)
 library(Hmisc)
 library(tidyverse)
 
-
-
-# 
-# # update ddharmony package if necessary
-# pkg <- as.data.frame(installed.packages())
-# if ("ddharmony" %in% pkg$Package){
-#   ddharmony_version <- as.numeric(substr(pkg$Version[pkg$Package == "ddharmony"],1,4))
-# } else {
-#   ddharmony_version <- 0
-# }
-# if (ddharmony_version != 1.01) {
-#   devtools::install_github("sarahertog/ddharmony", force=TRUE)
-# }
-# library(ddharmony)
-
 # load R functions
 lf <- list.files(file.path(ms_dir,"R","functions"))
 for (i in 1:length(lf)) {
   source(file.path(ms_dir, "R", "functions", lf[i]))
 }
 
-# Identify path for country input files
-# inputFilesDir <<- file.path(ms_dir, "InputFiles")
-# Identify path for output data
 output_dir <<- file.path(ms_dir, "output")
 
 # Load datasets
@@ -830,30 +812,37 @@ server <- function(input, output, session) {
         # parse international migrant stock counts data for this origin
         extract <- list(df = data$DO_modelled$df %>% dplyr::filter(origin == myorigin, sex == mysex),
                         constraint = data$DO_modelled$constraint %>% dplyr::filter(origin == myorigin))
+        
+        if (!is.null(data$DO)) {
+          indata_emp <- data$DO[data$DO$Origin == myorigin & data$DO$SexID == mysexid,] %>% mutate(VALUE = DataValue)
+        } else {
+          indata_emp <- NULL
+        }
         if (!nrow(extract$df) > 0) {
           extract <- NULL
         }
-  
+        
         ms2024_plt = ms2024org %>% dplyr::filter(LocIDdest == loc_id & sex == mysexid & LocIDorg == loc_id_org)
         ms2020_plt = ms2020org %>% dplyr::filter(LocIDdest == loc_id & sex == mysexid & LocIDorg == loc_id_org)
-
+        
       } else {
         extract <- list(df = NULL, constraint = NULL)
+        indata_emp <- NULL
         ms2024_plt <- NULL
         ms2020_plt <- NULL
       }
       p_origin <- ms_plots_emp(loc_id = loc_id, 
-                              LocName = loc_name,
-                              input = input, 
-                              census_refs = census_ref_dates %>% dplyr::filter(LocID == loc_id) %>% dplyr::select(reference_date), # data frame with one column "reference_date", 
-                              chartid = "origin_one", 
-                              indata_emp = data$DO[data$DO$Origin == myorigin & data$DO$SexID == mysexid,] %>% mutate(VALUE = DataValue), 
-                              indata_modelled = extract$df,  
-                              xmin = min(input$YearRange_OriginOne),
-                              xmax = max(input$YearRange_OriginOne),
-                              ymax = (max(ms2024$value[ms2024$LocID == loc_id]/1000))*1.1, 
-                              ms2024_plt = ms2024_plt,
-                              ms2020_plt = ms2020_plt)
+                               LocName = loc_name,
+                               input = input, 
+                               census_refs = census_ref_dates %>% dplyr::filter(LocID == loc_id) %>% dplyr::select(reference_date), # data frame with one column "reference_date", 
+                               chartid = "origin_one", 
+                               indata_emp = indata_emp, 
+                               indata_modelled = extract$df,  
+                               xmin = min(input$YearRange_OriginOne),
+                               xmax = max(input$YearRange_OriginOne),
+                               ymax = (max(ms2024$value[ms2024$LocID == loc_id]/1000))*1.1, 
+                               ms2024_plt = ms2024_plt,
+                               ms2020_plt = ms2020_plt)
       
       constraint_note_origin <- extract$constraint$constraint[!is.na(extract$constraint$constraint)]
       if (length(constraint_note_origin) > 0) {
@@ -1099,328 +1088,6 @@ server <- function(input, output, session) {
         height = 1000
       )
   })
-  
-  
-  ##############################################################
-  ##############################################################
-  # Run estimation process
-  
-  observeEvent(input$update_estimates, {
-    req(input$update_estimates)
-    
-    loc_id <- locs[locs$LocName == input$country_name, "LocID"]
-    iso3 <- locs[locs$LocID == loc_id, "ISO3"]
-    
-    cache <- NULL
-    
-    # check that input excel file can be opened
-    an.error.occurred <- FALSE
-    tryCatch({
-      read_xlsx(file.path(inputFilesDir, paste0(iso3, "_ms26.xlsx")), sheet = "parameters")
-    }, error = function(e){ an.error.occurred <<- TRUE }) # close tryCatch
-    eMessage <- ifelse(an.error.occurred, "Failed to read input Excel file.  Please make sure the file is closed.", "")
-    
-    if (eMessage != "") {
-      
-      showNotification(paste("Error:", eMessage), type = "error")
-      
-    } else {
-      #########################################
-      # Fetch new data and update cache
-      
-      withProgress(message = paste('Estimating migrant stock for', input$country_name), 
-                   value=0,
-                   {
-                     
-                     # Add a small delay to show the progress message
-                     Sys.sleep(0.1)
-                     setProgress(value = 0.3, detail = "Performing estimation...")
-                     
-      results <- server_update_estimates_one_country(loc_id,
-                                                     country_name = locs[locs$LocID == loc_id, "LocName"],
-                                                     country_iso3 = locs[locs$LocID == loc_id, "ISO3"],
-                                                     inputFilesDir, output_dir,
-                                                     generate_static_plots = input$static_plots)
-      setProgress(value = 0.7, detail = "Plotting results...")
-      Sys.sleep(0.1)
-      
-      })
-      
-      cache[[as.character(loc_id)]] <- results
-      country_cache(cache)
-      current_data(results)
-      #########################################
-      
-      # populate origin dropdown based on available data for the selected country
-      updateSelectInput(session, "origin_name",
-                        choices = c("Select a location"="", results$origins))
-      
-    }
-    
-    
-  })
-  
-  
-  ##############################################################
-  ##############################################################
-  # Refresh empirical data
-  
-  observeEvent(input$refresh_empirical, {
-    req(input$refresh_empirical)
-    
-    loc_id <- locs[locs$LocName == input$country_name, "LocID"]
-    iso3 <- locs[locs$LocID == loc_id, "ISO3"]
-    
-    cache <- NULL
-    
-    # check that input excel file can be opened
-    an.error.occurred <- FALSE
-    tryCatch({
-      read_xlsx(file.path(inputFilesDir, paste0(iso3, "_ms26.xlsx")), sheet = "parameters")
-    }, error = function(e){ an.error.occurred <<- TRUE }) # close tryCatch
-    eMessage <- ifelse(an.error.occurred, "Please close Excel input file before updating DemoData for this country.", "")
-    
-    if (eMessage != "") {
-      
-      showNotification(paste("Error:", eMessage), type = "error")
-      
-    } else {
-    
-      tryCatch({
-        
-        withProgress(message = paste('Refreshing empirical from DemoData for ', input$country_name), 
-                     detail = "This may take several minutes...", value=0,
-                     {
-                        
-               # update the empirical data 
-               ms_empirical <- ms_data_refresh_empirical(locid = loc_id, 
-                                                         append_Shiny_uploads = TRUE) 
-              
-               # update country excel input file a
-              if (nrow(ms_empirical) > 0) {
-               ms_data_refresh_update_INPUTS(locid = loc_id, 
-                                             ms_empirical, 
-                                             excel_input_file_path = file.path(inputFilesDir, paste0(iso3, "_ms26.xlsx")))
-              }
-              
-               # overwrite previous empirical file with the new one
-               save(ms_empirical, file = file.path(ms_dir, "GlobalFiles", "empirical", paste0(loc_id, "_ms_empirical.rda")))
-               showNotification(paste("DemoData refresh completed for ", input$country_name), type = "message", duration = NULL, closeButton = TRUE)
-               
-             })
-        
-      }, error = function(e) {
-        showNotification(
-          paste("Error refreshing DemoData:", e$message), 
-          type = "error"
-        )
-        return(NULL)
-        
-      }) # close tryCatch
-    }
-   
-  }) # close observe event
-  
-  
-  ##############################################################
-  ##############################################################
-  # Generate and return dowloadable DataLoader for the selected country
-  
-  output$download_dt <- downloadHandler(
-    # filename that users web browser should default to
-    filename = function() {
-      loc_id <- locs[locs$LocName == input$country_name, "LocID"]
-      paste0(loc_id, "_ms_DataLoader.xlsx")
-    },
-    
-    content = function(file) {
-      loc_id <- locs[locs$LocName == input$country_name, "LocID"]
-      
-     # origin ID codes and names from DemoData.  11 is Foreign-born. 12 is Foreign citizen
-      DD_Origins <- DDSQLtools::get_subgroups() %>% 
-        dplyr::filter(SubGroupTypeID %in% c(11,12)) %>% 
-        mutate(Definition = ifelse(SubGroupTypeID == 11, "ForeignBorn", "ForeignCitizen")) %>% 
-        rename(OriginID = PK_SubGroupID,
-               OriginName = Name) %>% 
-        arrange(SubGroupTypeID, OriginName) %>% 
-        dplyr::select(Definition, OriginID, OriginName) %>% 
-        dplyr::filter(!OriginID %in% c(1100011,1200012,1115063,1115080,1115065,1205943,
-                                       1206197,1206211)) %>% 
-        mutate(OriginName = ifelse(OriginName == "Total Foreign-born", "Total", OriginName))
-      
-      additional_origins <- read_xlsx(file.path(ms_dir, "GlobalFiles", "OriginName_to_SubGroupID_lookup.xlsx"), skip = 1) %>% 
-        pivot_longer(2:3, names_to = "SubGroupType", values_to = "OriginID") %>% 
-        dplyr::filter(!is.na(OriginID)) %>% 
-        mutate(Definition = case_when(SubGroupType == "SubGroupType11ID" ~ "ForeignBorn",
-                                      SubGroupType == "SubGroupType12ID" ~ "ForeignCitizen")) %>% 
-        dplyr::select(Definition, OriginID, OriginName)
-      
-      DD_Origins <- rbind(DD_Origins, additional_origins) %>% arrange(Definition, OriginName)
-       
-      tryCatch({
-        
-        withProgress(message = paste('Generating DataLoader template for', input$country_name), 
-                     value=0,
-                     {
-        
-        # This function returns an excel workbook with a blank data worksheet
-        # with the named columns needed to prepare empirical data series for DemoData storage
-        # It also queries DemoData using the DDSQLtools library to give lists of 
-        # all available DataCatalog and DataSources for the country
-        wb <- ms_data_loader_excel_template(locid = loc_id, 
-                                            locname = input$country_name,
-                                            DataCatalog = NULL, 
-                                            DataSources = NULL,
-                                            Origins = DD_Origins) 
-        
-        saveWorkbook(wb, file)
-      
-        })
-        
-      }, error = function(e) {
-        showNotification(
-          paste("Error processing file:", e$message), 
-          type = "error"
-        )
-        return(NULL)
-      })
-    }
-  )
-  
-  ##############################################################
-  ##############################################################
-  # Upload new empricial data series
-  
-  observeEvent(input$upload_dt, {
-    req(input$upload_dt)
-    
-    tryCatch({
-      
-      wb <- loadWorkbook(input$upload_dt$datapath)
-      
-      required_sheets <- c("data_series_info", "data_table", "lookup_DataCatalog", "lookup_DataSources", "lookup_Origins")
-      existing_sheets <- getSheetNames(input$upload_dt$datapath)
-      
-      missing_sheets <- setdiff(required_sheets, existing_sheets)
-      if (length(missing_sheets) > 0) {
-        showNotification(paste("Missing required sheets:", 
-                               paste(missing_sheets, collapse = ", ")), 
-                         type = "error",
-                         duration = NULL, closeButton = TRUE)
-        return(NULL)
-      }
-      
-      dc <- read.xlsx(wb, sheet = "lookup_DataCatalog")
-      LocID <- dc$LocID[1]
-      LocName <- dc$LocName[1]
-      iso3 <- MS_Locations$ISO3[MS_Locations$LocID == LocID]
-      
-      # check that input excel file can be opened
-      an.error.occurred <- FALSE
-      tryCatch({
-        read_xlsx(file.path(inputFilesDir, paste0(iso3, "_ms26.xlsx")), sheet = "parameters")
-      }, error = function(e){ an.error.occurred <<- TRUE }) # close tryCatch
-      eMessage <- ifelse(an.error.occurred, "Please close Excel input file before loading new data for this country.", "")
-      
-      if (eMessage != "") {
-        
-        showNotification(paste("Error:", eMessage), type = "error")
-        
-      } else {
-      
-      showNotification(paste0("Data upload in progress for ", LocName), type = "message", duration = 10, closeButton = FALSE)
-      
-      if(length(LocID) == 0 | is.na(LocID)) {
-        showNotification("Cannot find LocID in DataCatalog sheet", type = "error", duration = NULL, closeButton = TRUE)
-        return(NULL)
-      } else {
-        
-        # get a list of upload files for this country
-        lf <- list.files(file.path(ms_dir, "DataLoader", "Uploads"))
-        lf <- lf[substr(lf,1,nchar(as.character(LocID))+1) == paste0(LocID,"_")]
-        
-        if (length(lf) > 0) {
-          suffix <- max(as.numeric(gsub(".xlsx", "", str_split_i(lf, "_", i=4))))+1
-        } else {
-          suffix <- 1
-        }
-        # define the name of the uploaded data file
-        upload_file_path <- file.path(ms_dir, "DataLoader", "Uploads", paste0(LocID, "_ms_DataUpload_", suffix, ".xlsx"))
-        # save in uploads folder
-        saveWorkbook(wb, upload_file_path, overwrite = TRUE)
-        
-        # validate and standardize the data
-        
-        # load SubGroup1ID to LocID mapper for origins
-        sg <- read.csv(file = file.path(ms_dir, "GlobalFiles", "SubGroupID_to_LocID_lookup.csv"), stringsAsFactors = FALSE)
-        
-        valid <- ms_data_loader_validation(dloader_excel_file = upload_file_path, SubGroup_to_LocID = sg)
-        
-        if (!is.na(valid$message)) {
-          showNotification(paste(valid$message, "Data upload cancelled."), type = "error", duration = NULL, closeButton = TRUE)
-        } else {
-          
-          if (nrow(valid$data) > 0) {
-            
-            proceed <- TRUE
-            # warning_message <- ms_data_validtion_warnings(indata = valid$data)
-            # if (!is.null(warning_message)) {
-            #   # display a modal dialog with a header, textinput and action buttons
-            #   showModal(modalDialog(
-            #     tags$h2(warning_message),
-            #     footer=tagList(
-            #       actionButton('cancel_upload', 'Cancel data upload'),
-            #       modalButton('Ignore warning and continue data upload')
-            #     )
-            #   ))
-            #   # only store the information if the user clicks submit
-            #   observeEvent(input$cancel_upload, {
-            #     removeModal()
-            #     proceed <- ifelse(input$cancel_upload, FALSE, TRUE)
-            #   })
-            #   
-            # } 
-            
-            if (proceed == TRUE) {
-            # append the new data to the country empirical data file
-            empirical_file_path <- file.path(ms_dir, "GlobalFiles", "empirical", paste0(LocID, "_ms_empirical.rda"))
-            ms_empirical <- NULL
-            if (file.exists(empirical_file_path)) {
-              load(empirical_file_path)
-              if(!("Includes_refugees" %in% names(ms_empirical))) {
-                ms_empirical <- ms_empirical %>% 
-                  mutate(Includes_refugees = NA)
-              }
-              if(!("added" %in% names(ms_empirical))) {
-                ms_empirical <- ms_empirical %>% 
-                  mutate(added = "1900-01-01 00:00:00 EDT")
-              }
-             
-            }
-            ms_empirical <- rbind(ms_empirical, valid$data %>% mutate(added = as.character(now())) %>% dplyr::select(names(ms_empirical)) )
-            save(ms_empirical, file = empirical_file_path)
-
-            showNotification(paste0("New empirical data loaded successfully for ", LocName), type = "message", duration = NULL, closeButton = TRUE)
-
-            # add a record to the country excel input file and select TRUE for use in MS estimation
-            iso <- MS_Locations$ISO3[MS_Locations$LocID == LocID]
-            excel_input_file_path <- file.path(inputFilesDir, paste0(iso, "_ms26.xlsx"))
-            ms_data_refresh_update_INPUTS(locid = LocID, ms_empirical, excel_input_file_path)
-            }
-
-            }
-          }
-        }
-      }
-      }, error = function(e) {
-      showNotification(paste("Error:", e$message), type = "error", duration = NULL, closeButton = TRUE)
-    })
-  })
-  
-  # ## plot the Raymer age profile parameter optimization results
-  # output$optim = DT::renderDataTable({
-  #   results$optim
-  # })
 
 }  ### Close server function
 
