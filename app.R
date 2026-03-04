@@ -303,10 +303,16 @@ ui <- fluidPage(
                  background-color: #b0c4de;
                 }"),
                        
-                     selectInput("max_origins", "Select number of origins to plot:", choices = c(1:237), selected = 10),
-                     sliderInput("YearRange_OriginsAll", "Year range", 
-                                 min = yrs_out_start, max = 2030, sep = "",
-                                 value = c(yrs_out_start, yrs_out_end))))),
+                       selectInput("max_origins", "Select number of origins to plot:", choices = c(1:237), selected = 10),
+                       selectInput("MSType_OriginsAll", "Show:",
+                                   choices = c("Total migrant stock (includes refugees)", "Non-refugees only", "Refugees only"),
+                                   selected = "Total migrant stock (includes refugees)"),
+                       selectInput("ChartType_OriginsAll", "Chart type:",
+                                   choices = c("Alluvial", "Spaghetti"),
+                                   selected = "Alluvial"),
+                       sliderInput("YearRange_OriginsAll", "Year range", 
+                                   min = yrs_out_start, max = 2030, sep = "",
+                                   value = c(yrs_out_start, yrs_out_end))))),
                  
                  
                  div(
@@ -743,11 +749,12 @@ server <- function(input, output, session) {
       minyr <- min(input$YearRange_OriginsAll)
       maxyr <- max(input$YearRange_OriginsAll)
       
-      p_origins_all <- ms_plot_origins_alluvial(LocName = loc_name,
-                                                YearRange = c(minyr,maxyr),
-                                                DO_modelled_df = data$DO_modelled$df %>% dplyr::filter(sex == "both sexes"),
-                                                DT_modelled = data$DT_modelled,
-                                                n_origins = n_origins)
+      p_origins_all <- ms_plot_origins_all(LocName = loc_name,
+                                           YearRange = c(minyr,maxyr),
+                                           DO_modelled_df = data$DO_modelled$df %>% dplyr::filter(sex == "both sexes"),
+                                           DT_modelled = data$DT_modelled,
+                                           n_origins = n_origins,
+                                           input = input)
       
       Message <- ifelse(is.null(p_origins_all$plot_env$DO_modelled_df), "No data to plot. Check that migrant stock has been estimated for at least one origin.","")
       
