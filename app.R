@@ -118,7 +118,7 @@ ui <- fluidPage(
                                                 div(style = "display: inline-block; border-top: 4px solid black; width: 20px; margin-left: 5px;")
         ), value = TRUE),
         checkboxInput("ms2026excl", label = tagList("MS2026 (excl. refugees)",
-                                                    div(style = "display: inline-block; border-top: 4px dashed black; width: 20px; margin-left: 5px;")
+                                                div(style = "display: inline-block; border-top: 4px dashed black; width: 20px; margin-left: 5px;")
         ), value = TRUE),
         checkboxInput("ms2024", label = tagList("MS2024",
                                                 div(style = "display: inline-block; background-color: red; width: 10px; height: 10px; border-radius: 50%; margin-left: 5px;")
@@ -145,7 +145,7 @@ ui <- fluidPage(
         style = "border: 1px solid #ddd; border-radius: 5px; padding: 10px;",
         checkboxInput("static_plots", label = "Generate static plots", value = FALSE),
         uiOutput("lines_ui")
-      ),
+        ),
       # button to download DataLoader excel template
       div(
         style = "border: 1px solid #ddd; border-radius: 5px; padding: 10px;",
@@ -161,7 +161,7 @@ ui <- fluidPage(
         div(
           style = "display: grid; grid-template-columns: 1fr; gap: 8px;",
           fileInput("upload_dt", "Load new empirical data", accept = c(".xlsx"),
-                    multiple = FALSE
+            multiple = FALSE
           ) %>% tagAppendAttributes(style = "margin-bottom: 0; width: 100%;")
         )
       ),
@@ -175,16 +175,16 @@ ui <- fluidPage(
       
     ),
     mainPanel(
-      class = "container-fluid",
-      width=9,
-      tabsetPanel(
-        id = "tabset",
-        
-        ##############################################################
-        ##############################################################
-        # open tab panel for "Total migrant stock"
-        tabPanel("Total migrant stock", 
-                 div(
+    class = "container-fluid",
+    width=9,
+    tabsetPanel(
+      id = "tabset",
+      
+      ##############################################################
+      ##############################################################
+      # open tab panel for "Total migrant stock"
+      tabPanel("Total migrant stock", 
+               div(
                    class = "plot-container",
                    style = "display: flex; flex-direction: column; height: 90%;",
                    # slider selections
@@ -211,37 +211,37 @@ ui <- fluidPage(
                      style = "flex-grow: 1;",
                      plotlyOutput("totals_plot", height = "100%")
                    )
-                 ),
+               ),
+               div(
+                 style = "padding: 10px 0; border-top: 1px solid #ddd; margin-top: 10px;",
+                 # Data process type filters
                  div(
-                   style = "padding: 10px 0; border-top: 1px solid #ddd; margin-top: 10px;",
-                   # Data process type filters
+                   style = "display: flex; justify-content: center; margin-bottom: 10px;",
                    div(
-                     style = "display: flex; justify-content: center; margin-bottom: 10px;",
-                     div(
-                       style = "display: flex; gap: 20px; align-items: center;",
-                       checkboxInput("census", label = tagList("Census", tags$svg(width="16", height="16", viewBox="0 0 16 16", style="margin-left: 5px; vertical-align: middle;",
-                                                                                  tags$polygon(points="0 8,8 16,16 8,8 0", fill="#A020F0", stroke="#A020F0", strokeWidth="1"))), value = TRUE),
-                       checkboxInput("estimate", label = tagList("Estimate", tags$svg(width="16", height="16", viewBox="0 0 16 16", style="margin-left: 5px; vertical-align: middle;",
-                                                                                      tags$polygon(points="8,0 0,16 15,16", fill="orange", stroke="orange", strokeWidth="1"))), value = TRUE),
-                       checkboxInput("survey", label = tagList("Survey", div(style = "display: inline-block; background-color: cornflowerblue; width: 13px; height: 13px; margin-left: 5px;")), value = TRUE)
-                     )
-                   )),
-                 div(
-                   class = "plot-container",
-                   style = "display: flex; flex-direction: column; height: 90%;",
-                   # Plot
-                   div(
-                     style = "flex-grow: 1;",
-                     plotlyOutput("MigShare_plot", height = "100%")
+                     style = "display: flex; gap: 20px; align-items: center;",
+                     checkboxInput("census", label = tagList("Census", tags$svg(width="16", height="16", viewBox="0 0 16 16", style="margin-left: 5px; vertical-align: middle;",
+                                                                                    tags$polygon(points="0 8,8 16,16 8,8 0", fill="#A020F0", stroke="#A020F0", strokeWidth="1"))), value = TRUE),
+                     checkboxInput("estimate", label = tagList("Estimate", tags$svg(width="16", height="16", viewBox="0 0 16 16", style="margin-left: 5px; vertical-align: middle;",
+                                                                                    tags$polygon(points="8,0 0,16 15,16", fill="orange", stroke="orange", strokeWidth="1"))), value = TRUE),
+                     checkboxInput("survey", label = tagList("Survey", div(style = "display: inline-block; background-color: cornflowerblue; width: 13px; height: 13px; margin-left: 5px;")), value = TRUE)
                    )
-                 ),
-        ), # close tab panel for "Total migrant stock"
-        ##############################################################
-        ##############################################################
-        # open tab panel for "Proportion Female"
-        tabPanel("Proportion Female", 
+                 )),
+               div(
+                 class = "plot-container",
+                 style = "display: flex; flex-direction: column; height: 90%;",
+                 # Plot
                  div(
-                   class = "plot-container",
+                   style = "flex-grow: 1;",
+                   plotlyOutput("MigShare_plot", height = "100%")
+                 )
+               ),
+      ), # close tab panel for "Total migrant stock"
+      ##############################################################
+      ##############################################################
+      # open tab panel for "Proportion Female"
+      tabPanel("Proportion Female", 
+                   div(
+                     class = "plot-container",
                    style = "display: flex; flex-direction: column; height: 90%;",
                    # slider selections
                    div(
@@ -268,6 +268,94 @@ ui <- fluidPage(
                      plotlyOutput("propF_plot", height = "100%")
                    )
                  ),
+               div(
+                 style = "padding: 10px 0; border-top: 1px solid #ddd; margin-top: 10px;",
+                 # Data process type filters
+                 div(
+                   style = "display: flex; justify-content: center; margin-bottom: 10px;",
+                   div(
+                     style = "display: flex; gap: 20px; align-items: center;",
+                     checkboxInput("census", label = tagList("Census", tags$svg(width="16", height="16", viewBox="0 0 16 16", style="margin-left: 5px; vertical-align: middle;",
+                                                                                tags$polygon(points="0 8,8 16,16 8,8 0", fill="#A020F0", stroke="#A020F0", strokeWidth="1"))), value = TRUE),
+                     checkboxInput("estimate", label = tagList("Estimate", tags$svg(width="16", height="16", viewBox="0 0 16 16", style="margin-left: 5px; vertical-align: middle;",
+                                                                                    tags$polygon(points="8,0 0,16 15,16", fill="orange", stroke="orange", strokeWidth="1"))), value = TRUE),
+                     checkboxInput("survey", label = tagList("Survey", div(style = "display: inline-block; background-color: cornflowerblue; width: 13px; height: 13px; margin-left: 5px;")), value = TRUE)
+                   )
+                 ))
+      ), # close tab panel for "Proportion female"
+      ##############################################################
+      ##############################################################
+      # open tab panel for "Origins (all)"
+      tabPanel("Origins (all)", 
+               div(
+                 class = "plot-container",
+                 style = "display: flex; flex-direction: column; height: 90%;",
+                 div(
+                   style = "padding: 10px 0; border-top: 1px solid #ddd; margin-top: 10px;",
+                   # Data process type filters
+                   div(
+                     style = "display: flex; justify-content: center; margin-bottom: 10px;",
+                     div(
+                       style = "display: flex; gap: 20px; align-items: center;",
+                       tags$style(type='text/css', ".selectize-dropdown-content{
+                 height: 600px;
+                 width: 90%;
+                 background-color: #b0c4de;
+                }"),
+                       
+                     selectInput("max_origins", "Select number of origins to plot:", choices = c(1:237), selected = 10),
+                     sliderInput("YearRange_OriginsAll", "Year range", 
+                                 min = yrs_out_start, max = 2030, sep = "",
+                                 value = c(yrs_out_start, yrs_out_end))))),
+                 
+                 
+                 div(
+                   class = "plot-container",
+                   style = "display: flex; flex-direction: column; height: 90%;",
+                   # Plot
+                   div(
+                     style = "flex-grow: 1;",
+                     plotlyOutput("origins_all_plot", height = "100%")
+                   )
+                 ))
+               ), # close tab panel for "Origins (all)"
+                 
+      ##############################################################
+      ##############################################################
+      # open tab panel for "Origins (one at a time)"
+      tabPanel("Origins (one at a time)", 
+               div(
+                 class = "plot-container",
+                 style = "display: flex; flex-direction: column; height: 90%;",        
+                 # Dropdown and slider selections
+                 div(
+                   style = "padding: 10px 0; border-top: 1px solid #ddd; margin-top: 10px;",
+                   div(
+                     style = "display: flex; justify-content: center; margin-bottom: 10px;",
+                     div(
+                       style = "display: flex; gap: 20px; align-items: center;",
+                       tags$style(type='text/css', ".selectize-dropdown-content{
+                 height: 600px;
+                 width: 90%;
+                 background-color: #b0c4de;
+                }"),
+                       selectInput("origin_name", "Select Origin:", 
+                                   choices = c("Select a location"="")),
+                       selectInput("SexName_OriginOne", "Show sex:",
+                                   choices = c("Both sexes", "Female", "Male"),
+                                   selected = "Both sexes"),
+                       sliderInput("YearRange_OriginOne", "Year range", 
+                                   min = 1950, max = 2030, sep = "",
+                                   value = c(yrs_out_start-5, yrs_out_end) 
+                       )
+                       
+                     )
+                   )),
+                 # Plot
+                 div(
+                   style = "flex-grow: 1;",
+                   plotlyOutput("origin_plot", height = "100%")
+                 ),
                  div(
                    style = "padding: 10px 0; border-top: 1px solid #ddd; margin-top: 10px;",
                    # Data process type filters
@@ -282,226 +370,151 @@ ui <- fluidPage(
                        checkboxInput("survey", label = tagList("Survey", div(style = "display: inline-block; background-color: cornflowerblue; width: 13px; height: 13px; margin-left: 5px;")), value = TRUE)
                      )
                    ))
-        ), # close tab panel for "Proportion female"
-        ##############################################################
-        ##############################################################
-        # open tab panel for "Origins (all)"
-        tabPanel("Origins (all)", 
+               ),
+               div(
+                 class = "plot-container",
+                 style = "display: flex; flex-direction: column; height: 90%;",
+                 # Plot
                  div(
-                   class = "plot-container",
-                   style = "display: flex; flex-direction: column; height: 90%;",
+                   style = "flex-grow: 1;",
+                   plotlyOutput("origin_propF_plot", height = "100%")
+                 )
+               ),
+      ), # close tab panel for "Origins (one at a time)"
+      ##############################################################
+      ##############################################################
+      # open tab panel for "Age"
+      tabPanel("Age", 
+               div(
+                 class = "plot-container",
+                 style = "display: flex; flex-direction: column; height: 90%;",
+                 # Dropdown and slider selections
+                 div(
+                   style = "padding: 10px 0; border-top: 1px solid #ddd; margin-top: 10px;",
                    div(
-                     style = "padding: 10px 0; border-top: 1px solid #ddd; margin-top: 10px;",
-                     # Data process type filters
+                     style = "display: flex; justify-content: center; margin-bottom: 10px;",
                      div(
-                       style = "display: flex; justify-content: center; margin-bottom: 10px;",
-                       div(
-                         style = "display: flex; gap: 20px; align-items: center;",
-                         tags$style(type='text/css', ".selectize-dropdown-content{
+                       style = "display: flex; gap: 20px; align-items: center;",
+                       tags$style(type='text/css', ".selectize-dropdown-content{
                  height: 600px;
                  width: 90%;
                  background-color: #b0c4de;
                 }"),
-                         
-                         selectInput("max_origins", "Select number of origins to plot:", choices = c(1:237), selected = 10),
-                         sliderInput("YearRange_OriginsAll", "Year range", 
-                                     min = yrs_out_start, max = 2030, sep = "",
-                                     value = c(yrs_out_start, yrs_out_end))))),
-                   
-                   
-                   div(
-                     class = "plot-container",
-                     style = "display: flex; flex-direction: column; height: 90%;",
-                     # Plot
-                     div(
-                       style = "flex-grow: 1;",
-                       plotlyOutput("origins_all_plot", height = "100%")
+                       
+                       # Age group selector
+                       selectInput("AgeGroup", "Age group:",
+                                   choices = c(
+                                     # Broad age groups 
+                                     "Total",
+                                     "0-14", "15-24", "25-49", "50+", "60+", "70+", "80+",
+                                     # Standard 5-year age groups
+                                     "0-4","5-9","10-14","15-19","20-24",
+                                     "25-29","30-34","35-39","40-44","45-49",
+                                     "50-54","55-59","60-64","65-69","70-74",
+                                     "75-79","80-84","85+"),
+                                   selected = "Total"),
+                       
+                       # Year range slider shared across all three age plots
+                       sliderInput("YearRange_Age", "Year range",
+                                   min   = 1950, max = 2030, sep = "",
+                                   value = c(yrs_out_start, yrs_out_end))
                      )
-                   ))
-        ), # close tab panel for "Origins (all)"
-        
-        ##############################################################
-        ##############################################################
-        # open tab panel for "Origins (one at a time)"
-        tabPanel("Origins (one at a time)", 
+                   )),
+                 
+                 # Plot1: migrant stock
                  div(
-                   class = "plot-container",
-                   style = "display: flex; flex-direction: column; height: 90%;",        
-                   # Dropdown and slider selections
+                   style = "display: flex; align-items: flex-start; gap: 10px; margin-top: 15px;",
+
                    div(
-                     style = "padding: 10px 0; border-top: 1px solid #ddd; margin-top: 10px;",
-                     div(
-                       style = "display: flex; justify-content: center; margin-bottom: 10px;",
-                       div(
-                         style = "display: flex; gap: 20px; align-items: center;",
-                         tags$style(type='text/css', ".selectize-dropdown-content{
-                 height: 600px;
-                 width: 90%;
-                 background-color: #b0c4de;
-                }"),
-                         selectInput("origin_name", "Select Origin:", 
-                                     choices = c("Select a location"="")),
-                         selectInput("SexName_OriginOne", "Show sex:",
-                                     choices = c("Both sexes", "Female", "Male"),
-                                     selected = "Both sexes"),
-                         sliderInput("YearRange_OriginOne", "Year range", 
-                                     min = 1950, max = 2030, sep = "",
-                                     value = c(yrs_out_start-5, yrs_out_end) 
-                         )
-                         
-                       )
-                     )),
-                   # Plot
-                   div(
-                     style = "flex-grow: 1;",
-                     plotlyOutput("origin_plot", height = "100%")
-                   ),
-                   div(
-                     style = "padding: 10px 0; border-top: 1px solid #ddd; margin-top: 10px;",
-                     # Data process type filters
-                     div(
-                       style = "display: flex; justify-content: center; margin-bottom: 10px;",
-                       div(
-                         style = "display: flex; gap: 20px; align-items: center;",
-                         checkboxInput("census", label = tagList("Census", tags$svg(width="16", height="16", viewBox="0 0 16 16", style="margin-left: 5px; vertical-align: middle;",
-                                                                                    tags$polygon(points="0 8,8 16,16 8,8 0", fill="#A020F0", stroke="#A020F0", strokeWidth="1"))), value = TRUE),
-                         checkboxInput("estimate", label = tagList("Estimate", tags$svg(width="16", height="16", viewBox="0 0 16 16", style="margin-left: 5px; vertical-align: middle;",
-                                                                                        tags$polygon(points="8,0 0,16 15,16", fill="orange", stroke="orange", strokeWidth="1"))), value = TRUE),
-                         checkboxInput("survey", label = tagList("Survey", div(style = "display: inline-block; background-color: cornflowerblue; width: 13px; height: 13px; margin-left: 5px;")), value = TRUE)
-                       )
-                     ))
-                 ),
-                 div(
-                   class = "plot-container",
-                   style = "display: flex; flex-direction: column; height: 90%;",
-                   # Plot
-                   div(
-                     style = "flex-grow: 1;",
-                     plotlyOutput("origin_propF_plot", height = "100%")
-                   )
-                 ),
-        ), # close tab panel for "Origins (one at a time)"
-        ##############################################################
-        ##############################################################
-        # open tab panel for "Age"
-        tabPanel("Age", 
-                 div(
-                   class = "plot-container",
-                   style = "display: flex; flex-direction: column; height: 90%;",
-                   # Dropdown and slider selections
-                   div(
-                     style = "padding: 10px 0; border-top: 1px solid #ddd; margin-top: 10px;",
-                     div(
-                       style = "display: flex; justify-content: center; margin-bottom: 10px;",
-                       div(
-                         style = "display: flex; gap: 20px; align-items: center;",
-                         tags$style(type='text/css', ".selectize-dropdown-content{
-                 height: 600px;
-                 width: 90%;
-                 background-color: #b0c4de;
-                }"),
-                         
-                         
-                         # Sex selector for Plot 1
-                         selectInput("SexName_Age", "Show sex (Plot 1):",
-                                     choices  = c("Both sexes", "Male", "Female"),
-                                     selected = "Both sexes"),
-                         
-                         # Scale selector for Plot 1: absolute counts or age distribution proportion
-                         selectInput("AgeScale", "Scale (Plot 1):",
-                                     choices  = c("Counts", "Proportion"),
-                                     selected = "Counts"),
-                         
-                         # Age group selector
-                         selectInput("AgeGroup", "Age group:",
-                                     choices = c("0-4","5-9","10-14","15-19","20-24",
-                                                 "25-29","30-34","35-39","40-44","45-49",
-                                                 "50-54","55-59","60-64","65-69","70-74",
-                                                 "75-79","80-84","85+"),
-                                     selected = "5-9"),
-                         
-                         # Year range slider shared across all three age plots
-                         sliderInput("YearRange_Age", "Year range",
-                                     min   = 1950, max = 2030, sep = "",
-                                     value = c(yrs_out_start, yrs_out_end))
-                       )
-                     )),
-                   
-                   # Plot1: migrant stock
-                   div(
-                     style = "flex-grow: 1;",
-                     h5(style = "text-align:center; color:#2c3e50; margin-top:15px;", 
+                     style = "flex: 1; min-width: 0;",
+                     h5(style = "text-align:center; color:#2c3e50;", 
                         "Migrant stock (thousands)"),
                      plotlyOutput("age_plot_stock", height = "400px")
                    ),
                    
-                   # Plot2: sex ratios of migrant stock
                    div(
-                     style = "flex-grow: 1;",
-                     h5(style = "text-align:center; color:#2c3e50; margin-top:15px;", 
-                        "Sex ratio of migrant stock"),
-                     plotlyOutput("age_plot_sexratio", height = "400px")
-                   ),
-                   
-                   # Plot3: Non-refugee migrant stock estimates
-                   div(
-                     style = "flex-grow: 1;",
-                     h5(style = "text-align:center; color:#2c3e50; margin-top:15px;", 
-                        "Non-refugee migrant stock estimates"),
-                     plotlyOutput("age_plot_nonrefugee", height = "400px")
+                     style = "width: 140px; flex-shrink: 0; padding-top: 36px;",
+                     tags$div(
+                       style = "font-size: 15px;",
+                       selectInput("SexName_Age", "Sex:",
+                                   choices  = c("Both sexes", "Male", "Female"),
+                                   selected = "Both sexes",
+                                   width = "150px"),
+                       selectInput("AgeScale", "Scale:",
+                                   choices  = c("Counts", "Proportion"),
+                                   selected = "Counts",
+                                   width = "150px")
+                     )
                    )
-                 )
-        ), # close tab panel for "Age"
-        ##############################################################
-        ##############################################################
-        # open tab panel for "Diaspora"
-        tabPanel("Diaspora", 
+                 ),
+                 
+                 # Plot2: sex ratios of migrant stock
                  div(
-                   class = "plot-container",
-                   style = "display: flex; flex-direction: column; height: 90%;",
-                   # dropdown menu for number of destinations to plot
+                   style = "flex-grow: 1;",
+                   h5(style = "text-align:center; color:#2c3e50; margin-top:15px;", 
+                      "Sex ratio of migrant stock"),
+                   plotlyOutput("age_plot_sexratio", height = "400px")
+                 ),
+                 
+                 # Plot3: Non-refugee migrant stock estimates
+                 div(
+                   style = "flex-grow: 1;",
+                   h5(style = "text-align:center; color:#2c3e50; margin-top:15px;", 
+                      "Non-refugee migrant stock estimates"),
+                   plotlyOutput("age_plot_nonrefugee", height = "400px")
+                 )
+               )
+      ), # close tab panel for "Age"
+      ##############################################################
+      ##############################################################
+      # open tab panel for "Diaspora"
+      tabPanel("Diaspora", 
+               div(
+                 class = "plot-container",
+                 style = "display: flex; flex-direction: column; height: 90%;",
+                 # dropdown menu for number of destinations to plot
+                 div(
+                   style = "padding: 10px 0; border-top: 1px solid #ddd; margin-top: 10px;",
+                   # Data process type filters
                    div(
-                     style = "padding: 10px 0; border-top: 1px solid #ddd; margin-top: 10px;",
-                     # Data process type filters
+                     style = "display: flex; justify-content: center; margin-bottom: 10px;",
                      div(
-                       style = "display: flex; justify-content: center; margin-bottom: 10px;",
-                       div(
-                         style = "display: flex; gap: 20px; align-items: center;",
-                         tags$style(type='text/css', ".selectize-dropdown-content{
+                       style = "display: flex; gap: 20px; align-items: center;",
+                       tags$style(type='text/css', ".selectize-dropdown-content{
                  height: 600px;
                  width: 90%;
                  background-color: #b0c4de;
                 }"),
-                         
-                         selectInput("max_destinations", "Select number of destinations to plot:", choices = c(1:237), selected = 10),
-                         sliderInput("YearRange_Diaspora", "Year range", 
-                                     min = yrs_out_start, max = 2030, sep = "",
-                                     value = c(yrs_out_start, yrs_out_end))))),
-                   
-                   
+                       
+                       selectInput("max_destinations", "Select number of destinations to plot:", choices = c(1:237), selected = 10),
+                       sliderInput("YearRange_Diaspora", "Year range", 
+                                   min = yrs_out_start, max = 2030, sep = "",
+                                   value = c(yrs_out_start, yrs_out_end))))),
+                 
+                 
+                 div(
+                   class = "plot-container",
+                   style = "display: flex; flex-direction: column; height: 90%;",
+                   # Plot
                    div(
-                     class = "plot-container",
-                     style = "display: flex; flex-direction: column; height: 90%;",
-                     # Plot
-                     div(
-                       style = "flex-grow: 1;",
-                       plotlyOutput("Diaspora_plot", height = "100%")
-                     )
-                   ))
-        ), # close tab panel for "Diaspora"
-        ##############################################################
-        ##############################################################
-        # open tab panel for "Notes for analysts"
-        tabPanel(value = "notes_for_analysts", title = "Notes for analysts", 
-                 #DTOutput("notes")
-                 #DT::dataTableOutput("optim") 
-        ) # close tab panel for "Notes"
-        ##############################################################
-        ##############################################################
-        
+                     style = "flex-grow: 1;",
+                     plotlyOutput("Diaspora_plot", height = "100%")
+                   )
+                 ))
+      ), # close tab panel for "Diaspora"
+      ##############################################################
+      ##############################################################
+      # open tab panel for "Notes for analysts"
+      tabPanel(value = "notes_for_analysts", title = "Notes for analysts", 
+            #DTOutput("notes")
+            #DT::dataTableOutput("optim") 
+      ) # close tab panel for "Notes"
+      ##############################################################
+      ##############################################################
+      
       ) # close tabset panel
     ) # close for main panel
-  ) # close for sidebar layout
+    ) # close for sidebar layout
 ) # close for fluid page
 
 
@@ -531,44 +544,44 @@ server <- function(input, output, session) {
     iso3 <- locs[locs$LocID == loc_id, "ISO3"]
     
     cache <- country_cache()
-    
-    # check that data can be loaded
-    an.error.occurred <- FALSE
-    tryCatch({
+
+      # check that data can be loaded
+      an.error.occurred <- FALSE
+      tryCatch({
+        
+        results <- NULL
+        load(file.path(ms_dir, "output", paste0(loc_id, "_results.rda"))) 
+        
+      }, error = function(e){ an.error.occurred <<- TRUE }) # close tryCatch
+      eMessage <- ifelse(an.error.occurred, "No estimates available. Please run Update MS estimates", "")
       
-      results <- NULL
-      load(file.path(ms_dir, "output", paste0(loc_id, "_results.rda"))) 
-      
-    }, error = function(e){ an.error.occurred <<- TRUE }) # close tryCatch
-    eMessage <- ifelse(an.error.occurred, "No estimates available. Please run Update MS estimates", "")
-    
-    if (eMessage != "") {
-      
-      showNotification(paste("Error:", eMessage), type = "error")
-      cache[[as.character(loc_id)]] <- NULL
-      country_cache(cache)
-      current_data(NULL)
-      
-    } else {
-      #########################################
-      # Fetch new data and update cache
-      cache[[as.character(loc_id)]] <- results
-      country_cache(cache)
-      current_data(results)
-      #########################################
-      
-      # populate number of origins dropdown based on available data for the selected country
-      results <- results
-      updateSelectInput(session, "max_origins",
-                        choices = c(1:length(results$origins)), selected = min(length(results$origins), 10))
-      
-      # populate origin dropdown based on available data for the selected country
-      updateSelectInput(session, "origin_name",
-                        choices = c("Select a location"="", results$origins),
-                        selected = ifelse(length(results$origins) > 0 , results$origins[1], "Select a location"))
-      
-    }
-  })
+      if (eMessage != "") {
+        
+        showNotification(paste("Error:", eMessage), type = "error")
+        cache[[as.character(loc_id)]] <- NULL
+        country_cache(cache)
+        current_data(NULL)
+        
+      } else {
+        #########################################
+        # Fetch new data and update cache
+        cache[[as.character(loc_id)]] <- results
+        country_cache(cache)
+        current_data(results)
+        #########################################
+        
+        # populate number of origins dropdown based on available data for the selected country
+        results <- results
+        updateSelectInput(session, "max_origins",
+                          choices = c(1:length(results$origins)), selected = min(length(results$origins), 10))
+        
+        # populate origin dropdown based on available data for the selected country
+        updateSelectInput(session, "origin_name",
+                          choices = c("Select a location"="", results$origins),
+                          selected = ifelse(length(results$origins) > 0 , results$origins[1], "Select a location"))
+                        
+      }
+    })
   
   ##############################################################
   ##############################################################
@@ -585,17 +598,17 @@ server <- function(input, output, session) {
       iso3 <- selected_loc$ISO3
       
       p_total <- ms_plots_emp(loc_id = loc_id, 
-                              LocName = loc_name,
-                              input = input, 
-                              census_refs = census_ref_dates %>% dplyr::filter(LocID == loc_id) %>% dplyr::select(reference_date), # data frame with one column "reference_date", 
-                              chartid = "total", 
-                              indata_emp = data$DT, 
-                              indata_modelled = data$DT_modelled$df, 
-                              xmin = min(input$YearRange_Total),
-                              xmax = max(input$YearRange_Total),
-                              ymax = (max(ms2024$value[ms2024$LocID == loc_id]/1000))*1.1, 
-                              ms2024_plt = ms2024 %>% dplyr::filter(LocID == loc_id & sex == 0), 
-                              ms2020_plt = ms2020 %>% dplyr::filter(LocID == loc_id & sex == 0))
+                          LocName = loc_name,
+                          input = input, 
+                          census_refs = census_ref_dates %>% dplyr::filter(LocID == loc_id) %>% dplyr::select(reference_date), # data frame with one column "reference_date", 
+                          chartid = "total", 
+                          indata_emp = data$DT, 
+                          indata_modelled = data$DT_modelled$df, 
+                          xmin = min(input$YearRange_Total),
+                          xmax = max(input$YearRange_Total),
+                          ymax = (max(ms2024$value[ms2024$LocID == loc_id]/1000))*1.1, 
+                          ms2024_plt = ms2024 %>% dplyr::filter(LocID == loc_id & sex == 0), 
+                          ms2020_plt = ms2020 %>% dplyr::filter(LocID == loc_id & sex == 0))
       
       constraint_note <- data$DT_modelled$constraint[!is.na(data$DT_modelled$constraint)]
       if (length(constraint_note) > 0) {
@@ -605,7 +618,7 @@ server <- function(input, output, session) {
       }
       
       Warning <- data$Warnings$Warning_Total
-      # Convert to plotly and add hover information for vertical lines
+    # Convert to plotly and add hover information for vertical lines
       ply <- ggplotly(p_total, tooltip = "text") %>%
         layout(
           hoverlabel = list(
@@ -629,7 +642,7 @@ server <- function(input, output, session) {
       return(NULL)
     }
   })
-  
+
   # render the plot for Shiny display
   output$totals_plot <- NULL
   output$totals_plot <- renderPlotly({
@@ -702,8 +715,8 @@ server <- function(input, output, session) {
     if (nrow(selected_loc) > 0) {
       loc_id <- selected_loc$LocID
       loc_name <- selected_loc$LocName
-      
-      p_propF <- ms_plots_emp(loc_id = loc_id, 
+
+    p_propF <- ms_plots_emp(loc_id = loc_id, 
                               LocName = loc_name,
                               input = input, 
                               census_refs = census_ref_dates %>% dplyr::filter(LocID == loc_id) %>% dplyr::select(reference_date), # data frame with one column "reference_date", 
@@ -715,17 +728,17 @@ server <- function(input, output, session) {
                               ymax = 100, 
                               ms2024_plt = ms2024 %>% dplyr::filter(LocID == loc_id & sex != 0) %>% group_by(year) %>% summarise(value = value[sex == 2]/sum(value)), 
                               ms2020_plt = ms2020 %>% dplyr::filter(LocID == loc_id & sex != 0) %>% group_by(year) %>% summarise(value = value[sex == 2]/sum(value)))
-      
-      constraint_note <- data$DF_modelled$constraint[!is.na(data$DF_modelled$constraint)]
-      if (length(constraint_note) > 0) {
-        constraint_note <- paste(constraint_note, collapse = "\n")
-      } else {
-        constraint_note <- NULL
-      }
-      constraint_note <- paste(c(constraint_note, data$Warnings$Warning_PropF), collapse = "\n")
-      
-      
-      # Convert to plotly and add hover information for vertical lines
+                              
+    constraint_note <- data$DF_modelled$constraint[!is.na(data$DF_modelled$constraint)]
+    if (length(constraint_note) > 0) {
+      constraint_note <- paste(constraint_note, collapse = "\n")
+    } else {
+      constraint_note <- NULL
+    }
+    constraint_note <- paste(c(constraint_note, data$Warnings$Warning_PropF), collapse = "\n")
+    
+    
+    # Convert to plotly and add hover information for vertical lines
       ply <- ggplotly(p_propF, tooltip = "text") %>%
         layout(
           hoverlabel = list(
@@ -827,7 +840,7 @@ server <- function(input, output, session) {
     req(input$country_name != "")
     data <- current_data()
     req(data)  # Ensure data is available
-    
+
     selected_loc <- locs[locs$LocName == input$country_name, ]
     if (nrow(selected_loc) > 0) {
       loc_id <- selected_loc$LocID
@@ -887,8 +900,8 @@ server <- function(input, output, session) {
       # parse proportion female for this origin
       if (length(loc_id_org) != 0) {
         if (!is.null(data$DO)){
-          extract_empirical <- data$DO %>% 
-            dplyr::filter(Origin == myorigin, SexID %in% c(1, 2))
+        extract_empirical <- data$DO %>% 
+          dplyr::filter(Origin == myorigin, SexID %in% c(1, 2))
         } else {
           extract_empirical <- NULL
         }
@@ -900,37 +913,37 @@ server <- function(input, output, session) {
                      VALUE = DataValue)
           }
         } else {
-          extract_empirical <- NULL
+         extract_empirical <- NULL
         }
         extract_modelled <- data$DO_modelled$df %>% 
-          dplyr::filter(origin == myorigin, sex %in% c("female", "male")) %>%
-          dplyr::select(year, sex, value) %>% 
-          pivot_wider(names_from = sex, values_from = value) %>% 
-          mutate(IMF = female,
-                 IMM = male, 
-                 value = female/(female+male)) %>%
-          dplyr::select(year, IMF, IMM, value) %>% 
-          left_join(data$DO_modelled$df %>% 
-                      dplyr::filter(origin == myorigin, sex %in% c("female", "male")) %>%
-                      dplyr::select(year, sex, refugees) %>% 
-                      pivot_wider(names_from = sex, values_from = refugees) %>%
-                      mutate(rfgF = female,
-                             rfgM = male) %>% 
-                      dplyr::select(year, rfgF, rfgM), by = "year") %>% 
+                              dplyr::filter(origin == myorigin, sex %in% c("female", "male")) %>%
+                              dplyr::select(year, sex, value) %>% 
+                              pivot_wider(names_from = sex, values_from = value) %>% 
+                              mutate(IMF = female,
+                                     IMM = male, 
+                                     value = female/(female+male)) %>%
+                              dplyr::select(year, IMF, IMM, value) %>% 
+                              left_join(data$DO_modelled$df %>% 
+                                          dplyr::filter(origin == myorigin, sex %in% c("female", "male")) %>%
+                                          dplyr::select(year, sex, refugees) %>% 
+                                          pivot_wider(names_from = sex, values_from = refugees) %>%
+                                          mutate(rfgF = female,
+                                                 rfgM = male) %>% 
+                                          dplyr::select(year, rfgF, rfgM), by = "year") %>% 
           mutate(IM_noRfgF = IMF - rfgF,
                  IM_noRfgM = IMM - rfgM)
         if (!nrow(extract_modelled) > 0) {
           extract_modelled <- NULL
         }
-        
-        ms2024_plt = ms2024org %>% dplyr::filter(LocIDdest == loc_id & LocIDorg == loc_id_org & sex != 0) %>% group_by(year) %>% summarise(value = value[sex == 2]/sum(value))
-        ms2020_plt = ms2020org %>% dplyr::filter(LocIDdest == loc_id & LocIDorg == loc_id_org & sex != 0) %>% group_by(year) %>% summarise(value = value[sex == 2]/sum(value))
-        
+
+          ms2024_plt = ms2024org %>% dplyr::filter(LocIDdest == loc_id & LocIDorg == loc_id_org & sex != 0) %>% group_by(year) %>% summarise(value = value[sex == 2]/sum(value))
+          ms2020_plt = ms2020org %>% dplyr::filter(LocIDdest == loc_id & LocIDorg == loc_id_org & sex != 0) %>% group_by(year) %>% summarise(value = value[sex == 2]/sum(value))
+
       } else {
-        extract_empirical <- NULL
-        extract_modelled <- NULL
-        ms2024_plt <- NULL
-        ms2020_plt <- NULL
+          extract_empirical <- NULL
+          extract_modelled <- NULL
+          ms2024_plt <- NULL
+          ms2020_plt <- NULL
       }
       p_origin_propF <- ms_plots_emp(loc_id = loc_id, 
                                      LocName = loc_name,
@@ -977,7 +990,7 @@ server <- function(input, output, session) {
                                      '<sup>',
                                      paste0("Proportion female among international migrant stock originating from ",myorigin),'</sup>'))
         )
-      
+
       ply <- list(ply_origin = ply_origin,
                   ply_origin_propF = ply_origin_propF)
       return(ply)
@@ -994,14 +1007,14 @@ server <- function(input, output, session) {
         height = session$clientData$output_country_plot_width * 0.6
       )
   })
-  
-  output$origin_propF_plot <- NULL
-  output$origin_propF_plot <- renderPlotly({
-    plot_origin()$ply_origin_propF %>%
-      layout(
-        autosize = TRUE,
-        height = session$clientData$output_country_plot_width * 0.6
-      )
+    
+    output$origin_propF_plot <- NULL
+    output$origin_propF_plot <- renderPlotly({
+      plot_origin()$ply_origin_propF %>%
+        layout(
+          autosize = TRUE,
+          height = session$clientData$output_country_plot_width * 0.6
+        )
   })
   
   
@@ -1013,7 +1026,7 @@ server <- function(input, output, session) {
     if (age_group_str == "85+") return(85)
     as.numeric(strsplit(age_group_str, "-")[[1]][1])
   }
-  
+    
   plot_age_stock <- reactive({
     req(input$country_name != "")
     data <- current_data()
@@ -1025,10 +1038,10 @@ server <- function(input, output, session) {
       loc_name <- selected_loc$LocName
       
       p_age_stock <- ms_plot_age_stock(loc_id = loc_id, 
-                                       LocName = loc_name,
-                                       input = input, 
-                                       MS_age = data$DA, # empirical data
-                                       MS_modelled = data$DA_modelled)
+                           LocName = loc_name,
+                           input = input, 
+                           MS_age = data$DA, # empirical data
+                           MS_modelled = data$DA_modelled)
       
       Message <- paste(c(data$Warnings$Warning_Age), collapse = "\n")
       
@@ -1058,7 +1071,7 @@ server <- function(input, output, session) {
       return(NULL)
     }
   }) # close p_age_stock
-  
+
   
   # Plot2: sex ratios of migrant stock
   plot_age_sexratio <- reactive({
@@ -1151,7 +1164,7 @@ server <- function(input, output, session) {
       layout(autosize = TRUE,
              height   = session$clientData$output_country_plot_width * 0.6)
   })
-  
+
   ##############################################################
   ##############################################################
   # Diaspora
@@ -1164,10 +1177,10 @@ server <- function(input, output, session) {
     if (nrow(selected_loc) > 0) {
       loc_id <- selected_loc$LocID
       loc_name <- selected_loc$LocName
-      
+
       p_Diaspora <- ms_plot_diaspora_alluvial(LocName = loc_name,
-                                              input,
-                                              diaspora = data$diaspora)
+                                  input,
+                                  diaspora = data$diaspora)
       
       Message <- ifelse(is.null(data$diaspora), "No data to plot.","")
       
@@ -1207,7 +1220,7 @@ server <- function(input, output, session) {
         height = 1000
       )
   })
-  
+
 }  ### Close server function
 
 

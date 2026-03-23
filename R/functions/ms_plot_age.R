@@ -4,11 +4,81 @@
 #   ms_plot_age_nonrefugee() - Plot 3: non-refugee migrant stock estimates over time
 #
 # Helper function:
-#   parse_age_start()        - converts age group label (e.g. "5-9", "85+" -> 85 ) to numeric start age
+#   parse_age_start()        - converts age group label (e.g. "5-9", "85+" -> 85) to numeric start age
+#   age_group_to_starts()    - returns vector of 5-year age_start values for any age group label
+#   is_broad_group()         - returns TRUE if selected group is a broad group (e.g. "Total", "0-14")
+#   aggregate_emp_to_broad() - aggregates empirical DA data to a broad age group
+#   aggregate_mod_to_broad() - aggregates modelled DA_modelled$df to a broad age group
+
 
 parse_age_start <- function(age_group_str) {
   if (age_group_str == "85+") return(85)
+  # broad groups do not map to a single age_start; return NA
+  if (age_group_str %in% c("Total","0-14","15-24","25-49",
+                           "50+","60+","70+","80+")) return(NA)
   as.numeric(strsplit(age_group_str, "-")[[1]][1])
+}
+
+
+# return vector of 5-year age_start values for a given age group label
+# Works for both broad groups (e.g. "0-14") and standard 5-year groups (e.g. "20-24")
+age_group_to_starts <- function(age_group_str) {
+  switch(age_group_str,
+         "Total"  = seq(0,  85, by = 5),
+         "0-14"   = c(0, 5, 10),
+         "15-24"  = c(15, 20),
+         "25-49"  = seq(25, 45, by = 5),
+         "50+"    = seq(50, 85, by = 5),
+         "60+"    = seq(60, 85, by = 5),
+         "70+"    = seq(70, 85, by = 5),
+         "80+"    = c(80, 85),
+         # Standard 5-year group: single start value
+         {
+           if (age_group_str == "85+") return(85)
+           as.numeric(strsplit(age_group_str, "-")[[1]][1])
+         }
+  )
+}
+
+
+# return TRUE if the selected age group is a broad group
+is_broad_group <- function(age_group_str) {
+  age_group_str %in% c("Total","0-14","15-24","25-49",
+                       "50+","60+","70+","80+")
+}
+
+
+# aggregate empirical DA data to a broad age group
+# Sums DataValue across all constituent 5-year age groups,
+aggregate_emp_to_broad <- function(df, age_starts, age_label) {
+  df %>%
+    dplyr::filter(AgeStart %in% age_starts) %>%
+    group_by(MS_SeriesID, TimeMid, SexName, SexID, Definition,
+             DataSourceShortName, Include, non_standard) %>%
+    summarise(
+      DataValue = sum(DataValue, na.rm = TRUE),
+      AgeLabel  = age_label,       # use the selected label e.g. "0-14"
+      AgeStart  = min(AgeStart),
+      AgeEnd    = max(AgeStart) + 5,
+      .groups   = "drop"
+    )
+}
+
+
+# aggregate modelled DA_modelled$df to a broad age group
+# Sums value and refugees across all constituent 5-year age groups,
+# grouped by year and sex
+aggregate_mod_to_broad <- function(df, age_starts) {
+  df %>%
+    dplyr::filter(age_start %in% age_starts) %>%
+    group_by(year, sex) %>%
+    summarise(
+      value     = sum(value,    na.rm = TRUE),
+      refugees  = sum(refugees, na.rm = TRUE),
+      age_start = min(age_start),
+      age_span  = length(unique(age_start)) * 5,
+      .groups   = "drop"
+    )
 }
 
 
@@ -16,7 +86,7 @@ parse_age_start <- function(age_group_str) {
 ms_plot_age_stock <- function(loc_id, LocName, input, MS_age, MS_modelled) {
   
   # Parse selected age group and year range from Shiny inputs
-  age_start_sel <- parse_age_start(input$AgeGroup)
+  age_start_sel <- parse_age_start(input$AgeGroup)  # NA for broad groups
   yr_min        <- min(input$YearRange_Age)
   yr_max        <- max(input$YearRange_Age)
   
@@ -27,14 +97,25 @@ ms_plot_age_stock <- function(loc_id, LocName, input, MS_age, MS_modelled) {
   age_label     <- input$AgeGroup
   sex_filter    <- tolower(input$SexName_Age)
   
+  # Determine the set of age_start values and whether this is a broad group
+  age_starts <- age_group_to_starts(age_label)
+  is_broad   <- is_broad_group(age_label)
+  
   # Prepare empirical data
   if (!is.null(MS_age)) {
     
-    # Subset by selected age group and year range
-    indata_emp <- MS_age %>%
-      dplyr::filter(AgeStart == age_start_sel,
-                    TimeMid  >= yr_min,
-                    TimeMid  <= yr_max)
+    # Broad group: aggregate across constituent 5-year groups;
+    # Standard 5-year group: filter to single age_start value
+    if (is_broad) {
+      indata_emp <- MS_age %>%
+        dplyr::filter(TimeMid >= yr_min, TimeMid <= yr_max) %>%
+        aggregate_emp_to_broad(age_starts = age_starts, age_label = age_label)
+    } else {
+      indata_emp <- MS_age %>%
+        dplyr::filter(AgeStart == age_starts,
+                      TimeMid  >= yr_min,
+                      TimeMid  <= yr_max)
+    }
     
     # foreign-born / foreign-citizen filters from sidebar checkboxes
     if (!input$show_foreign_born) {
@@ -169,12 +250,21 @@ ms_plot_age_stock <- function(loc_id, LocName, input, MS_age, MS_modelled) {
   # Plot MS2026 model estimates
   if (input$ms2026 && !is.null(MS_modelled$df)) {
     
-    # Filter modelled data by selected sex, age group, and year range
-    df_mod <- MS_modelled$df %>%
-      dplyr::filter(age_start == age_start_sel,
-                    sex       == sex_filter,
-                    year      >= yr_min,
-                    year      <= yr_max)
+    # Broad group: aggregate modelled data across constituent 5-year groups;
+    # Standard 5-year group: filter directly
+    if (is_broad) {
+      df_mod <- MS_modelled$df %>%
+        dplyr::filter(sex  == sex_filter,
+                      year >= yr_min,
+                      year <= yr_max) %>%
+        aggregate_mod_to_broad(age_starts = age_starts)
+    } else {
+      df_mod <- MS_modelled$df %>%
+        dplyr::filter(age_start == age_starts,
+                      sex       == sex_filter,
+                      year      >= yr_min,
+                      year      <= yr_max)
+    }
     
     if (nrow(df_mod) > 0) {
       
@@ -273,11 +363,15 @@ ms_plot_age_stock <- function(loc_id, LocName, input, MS_age, MS_modelled) {
 ms_plot_age_sexratio <- function(loc_id, LocName, input, MS_age, MS_modelled) {
   
   # Parse selected age group and year range from Shiny inputs
-  age_start_sel <- parse_age_start(input$AgeGroup)
+  age_start_sel <- parse_age_start(input$AgeGroup)  # NA for broad groups
   yr_min        <- min(input$YearRange_Age)
   yr_max        <- max(input$YearRange_Age)
   
   age_label <- input$AgeGroup
+  
+  # Determine the set of age_start values and whether this is a broad group
+  age_starts <- age_group_to_starts(age_label)
+  is_broad   <- is_broad_group(age_label)
   
   # Initialize the plot
   p <- ggplot()
@@ -285,16 +379,30 @@ ms_plot_age_sexratio <- function(loc_id, LocName, input, MS_age, MS_modelled) {
   # Plot MS2026 modelled sex ratio
   if (!is.null(MS_modelled$df)) {
     
-    # Filter male and female estimates for the selected age group and year range
-    df_sr <- MS_modelled$df %>%
-      dplyr::filter(age_start == age_start_sel,
-                    sex       %in% c("male", "female"),
-                    year      >= yr_min,
-                    year      <= yr_max) %>%
-      dplyr::select(year, sex, value) %>%
-      # Pivot to wide format to compute ratio
-      pivot_wider(names_from = sex, values_from = value) %>%
-      mutate(sex_ratio = male / female * 100)   # males per 100 females
+    # Broad group: aggregate male and female separately then compute ratio;
+    # Standard 5-year group: filter directly
+    if (is_broad) {
+      df_sr <- MS_modelled$df %>%
+        dplyr::filter(sex  %in% c("male", "female"),
+                      year >= yr_min,
+                      year <= yr_max) %>%
+        aggregate_mod_to_broad(age_starts = age_starts) %>%
+        dplyr::select(year, sex, value) %>%
+        pivot_wider(names_from = sex, values_from = value) %>%
+        drop_na(male, female)%>%
+        mutate(sex_ratio = male / female * 100)
+    } else {
+      df_sr <- MS_modelled$df %>%
+        dplyr::filter(age_start == age_starts,
+                      sex       %in% c("male", "female"),
+                      year      >= yr_min,
+                      year      <= yr_max) %>%
+        dplyr::select(year, sex, value) %>%
+        # Pivot to wide format to compute ratio
+        pivot_wider(names_from = sex, values_from = value) %>%
+        drop_na(male, female) %>%
+        mutate(sex_ratio = male / female * 100)   # males per 100 females
+    }
     
     if (nrow(df_sr) > 0) {
       p <- p +
@@ -316,13 +424,21 @@ ms_plot_age_sexratio <- function(loc_id, LocName, input, MS_age, MS_modelled) {
   # Plot empirical sex ratio
   if (!is.null(MS_age)) {
     
-    # Filter empirical data for the selected age group and year range
-    # SexID 1 = male, 2 = female
-    indata_emp_sr <- MS_age %>%
-      dplyr::filter(AgeStart == age_start_sel,
-                    SexID    %in% c(1, 2),
-                    TimeMid  >= yr_min,
-                    TimeMid  <= yr_max)
+    # Broad group: aggregate across constituent 5-year groups;
+    # Standard 5-year group: filter directly
+    if (is_broad) {
+      indata_emp_sr <- MS_age %>%
+        dplyr::filter(SexID   %in% c(1, 2),
+                      TimeMid >= yr_min,
+                      TimeMid <= yr_max) %>%
+        aggregate_emp_to_broad(age_starts = age_starts, age_label = age_label)
+    } else {
+      indata_emp_sr <- MS_age %>%
+        dplyr::filter(AgeStart == age_starts,
+                      SexID    %in% c(1, 2),
+                      TimeMid  >= yr_min,
+                      TimeMid  <= yr_max)
+    }
     
     # foreign-born / foreign-citizen filters from sidebar checkboxes
     if (!input$show_foreign_born) {
@@ -338,6 +454,8 @@ ms_plot_age_sexratio <- function(loc_id, LocName, input, MS_age, MS_modelled) {
       df_emp_sr <- indata_emp_sr %>%
         dplyr::select(MS_SeriesID, TimeMid, SexID, DataValue,
                       Include, Definition, DataSourceShortName) %>%
+        group_by(MS_SeriesID, TimeMid, SexID, Include, Definition, DataSourceShortName) %>%
+        summarise(DataValue = mean(DataValue, na.rm = TRUE), .groups = "drop") %>%
         pivot_wider(names_from   = SexID,
                     values_from  = DataValue,
                     names_prefix = "sex_") %>%
@@ -386,10 +504,11 @@ ms_plot_age_sexratio <- function(loc_id, LocName, input, MS_age, MS_modelled) {
                color      = "gray50",
                linewidth  = 0.8)
   
-  # Set colours for empirical series
+  # Set colours: use age_starts (vector) instead of age_start_sel (scalar)
+  # to correctly cover broad groups when checking available empirical series
   if (!is.null(MS_age)) {
     indata_check <- MS_age %>%
-      dplyr::filter(AgeStart == age_start_sel,
+      dplyr::filter(AgeStart %in% age_starts,
                     SexID    %in% c(1, 2),
                     TimeMid  >= yr_min,
                     TimeMid  <= yr_max)
@@ -430,27 +549,38 @@ ms_plot_age_sexratio <- function(loc_id, LocName, input, MS_age, MS_modelled) {
 # Plot 3: Non-refugee migrant stock estimates over time for a selected age group
 # Non-refugee stock = total value minus refugees
 # Shown separately for both sexes, male, and female
-
 ms_plot_age_nonrefugee <- function(loc_id, LocName, input, MS_modelled) {
   
   # Parse selected age group and year range from Shiny inputs
-  age_start_sel <- parse_age_start(input$AgeGroup)
+  age_start_sel <- parse_age_start(input$AgeGroup)  # NA for broad groups
   yr_min        <- min(input$YearRange_Age)
   yr_max        <- max(input$YearRange_Age)
   
   age_label <- input$AgeGroup
+  
+  # Determine the set of age_start values and whether this is a broad group
+  age_starts <- age_group_to_starts(age_label)
+  is_broad   <- is_broad_group(age_label)
   
   # Initialize the plot
   p <- ggplot()
   
   if (!is.null(MS_modelled$df)) {
     
-    # Compute non-refugee migrant stock by subtracting refugees from total value
-    df_nr <- MS_modelled$df %>%
-      dplyr::filter(age_start == age_start_sel,
-                    year      >= yr_min,
-                    year      <= yr_max) %>%
-      mutate(value_non_refugee = value - refugees)
+    # Broad group: aggregate across constituent 5-year groups then subtract refugees;
+    # Standard 5-year group: filter directly
+    if (is_broad) {
+      df_nr <- MS_modelled$df %>%
+        dplyr::filter(year >= yr_min, year <= yr_max) %>%
+        aggregate_mod_to_broad(age_starts = age_starts) %>%
+        mutate(value_non_refugee = value - refugees)
+    } else {
+      df_nr <- MS_modelled$df %>%
+        dplyr::filter(age_start == age_starts,
+                      year      >= yr_min,
+                      year      <= yr_max) %>%
+        mutate(value_non_refugee = value - refugees)
+    }
     
     # Plot both sexes as solid black line
     df_nr_both <- df_nr %>% dplyr::filter(sex == "both sexes")
