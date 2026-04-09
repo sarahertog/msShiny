@@ -2,8 +2,8 @@
 library(readxl)
 library(tidyverse)
 
-ms_dir <- "C:/Users/SHERTOG/OneDrive - United Nations/MS 2025/Shiny"
-
+# ms_dir <- "C:/Users/SHERTOG/OneDrive - United Nations/MS 2025/Shiny"
+ms_dir <- "D:/msShiny"
 
 shp <- function(indata, cols, r24 = FALSE) {
   df <- indata[,cols] 
@@ -89,3 +89,66 @@ ms2020rfg <- shp(indata = Tbl6_2020, cols = c(4, 6:12)) %>%
          value = as.numeric(value),
          value = ifelse(is.na(value), 0, value))
 save(ms2020rfg, file = file.path(ms_dir, "GlobalFiles", "ms_previous", "ms2020rfg.rda"))
+
+# retrieve migrant stock by age used in 2020 revision (Table 1)
+Tbl1_2020_age <- read_xlsx(
+  path  = file.path(ms_dir, "GlobalFiles", "ms_previous",
+                    "undesa_pd_2020_ims_stock_by_age_sex_and_destination.xlsx"),
+  sheet = "Table 1",
+  skip  = 10
+)
+
+# define age group metadata (including Total)
+age_labels <- c("0-4","5-9","10-14","15-19","20-24","25-29","30-34","35-39",
+                "40-44","45-49","50-54","55-59","60-64","65-69","70-74","75+","Total")
+age_starts <- c(0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70, 75, 0)
+age_ends   <- c(4, 9, 14, 19, 24, 29, 34, 39, 44, 49, 54, 59, 64, 69, 74, -1, -1)
+age_spans  <- c(5, 5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  -1, -1)
+n_age      <- length(age_labels)   # 17 age groups (including Total)
+
+# column indices: col 2 = Year, col 5 = LocID
+# both sexes (sex=0): cols 7~23  (cols 7~22 = age groups, col 23 = Total)
+# male       (sex=1): cols 24~40 (cols 24~39 = age groups, col 40 = Total)
+# female     (sex=2): cols 41~57 (cols 41~56 = age groups, col 57 = Total)
+col_year   <- 2
+col_loc    <- 5
+col_both   <- 7:(7  + n_age - 1)   # 7~23
+col_male   <- 24:(24 + n_age - 1)  # 24~40
+col_female <- 41:(41 + n_age - 1)  # 41~57
+
+# helper function: extract values for one sex group and pivot to long format
+extract_sex <- function(df, col_loc, col_year, col_vals, sex_code) {
+  df[, c(col_loc, col_year, col_vals)] %>%
+    setNames(c("LocID", "year", age_labels)) %>%
+    pivot_longer(
+      cols      = all_of(age_labels),
+      names_to  = "AgeLabel",
+      values_to = "value"
+    ) %>%
+    mutate(
+      sex   = sex_code,
+      year  = as.numeric(year) + 0.5,
+      value = as.numeric(value)
+    )
+}
+
+# combine all three sex groups and join age group metadata
+ms2020age <- bind_rows(
+  extract_sex(Tbl1_2020_age, col_loc, col_year, col_both,   sex_code = 0),
+  extract_sex(Tbl1_2020_age, col_loc, col_year, col_male,   sex_code = 1),
+  extract_sex(Tbl1_2020_age, col_loc, col_year, col_female, sex_code = 2)
+) %>%
+  left_join(
+    data.frame(
+      AgeLabel = age_labels,
+      AgeStart = age_starts,
+      AgeEnd   = age_ends,
+      AgeSpan  = age_spans,
+      stringsAsFactors = FALSE
+    ),
+    by = "AgeLabel"
+  ) %>%
+  dplyr::select(LocID, year, sex, AgeStart, AgeEnd, AgeSpan, AgeLabel, value) %>%
+  arrange(LocID, year, sex, AgeStart)
+
+save(ms2020age, file = file.path(ms_dir, "GlobalFiles", "ms_previous", "ms2020age.rda"))

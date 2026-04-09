@@ -411,7 +411,7 @@ ui <- fluidPage(
                                        "0-4","5-9","10-14","15-19","20-24",
                                        "25-29","30-34","35-39","40-44","45-49",
                                        "50-54","55-59","60-64","65-69","70-74",
-                                       "75-79","80-84","85+"),
+                                       "75+","75-79","80-84","85+"),
                                      selected = "Total"),
                          
                          # Year range slider shared across all three age plots
@@ -420,6 +420,7 @@ ui <- fluidPage(
                                      value = c(yrs_out_start, yrs_out_end))
                        )
                      )),
+                   
                    
                    # Plot1: migrant stock
                    div(
@@ -447,21 +448,59 @@ ui <- fluidPage(
                        )
                      )
                    ),
+                   div(
+                     style = "padding: 10px 0; border-bottom: 1px solid #ddd; margin-bottom: 10px;",
+                     div(
+                       style = "display: flex; justify-content: center;",
+                       div(
+                         style = "display: flex; gap: 20px; align-items: center;",
+                         checkboxInput("census", label = tagList("Census", 
+                                                                 tags$svg(width="16", height="16", viewBox="0 0 16 16", style="margin-left: 5px; vertical-align: middle;",
+                                                                          tags$polygon(points="0 8,8 16,16 8,8 0", fill="#A020F0", stroke="#A020F0", strokeWidth="1"))), 
+                                       value = TRUE),
+                         checkboxInput("estimate", label = tagList("Estimate", 
+                                                                   tags$svg(width="16", height="16", viewBox="0 0 16 16", style="margin-left: 5px; vertical-align: middle;",
+                                                                            tags$polygon(points="8,0 0,16 15,16", fill="orange", stroke="orange", strokeWidth="1"))), 
+                                       value = TRUE),
+                         checkboxInput("survey", label = tagList("Survey", 
+                                                                 div(style = "display: inline-block; background-color: cornflowerblue; width: 13px; height: 13px; margin-left: 5px;")), 
+                                       value = TRUE)
+                       )
+                     )
+                   ),
                    
                    # Plot2: sex ratios of migrant stock
                    div(
-                     style = "flex-grow: 1;",
-                     h5(style = "text-align:center; color:#2c3e50; margin-top:15px;", 
-                        "Sex ratio of migrant stock"),
-                     plotlyOutput("age_plot_sexratio", height = "400px")
+                     style = "display: flex; align-items: flex-start; gap: 10px; margin-top: 15px;",
+                     
+                     div(
+                       style = "flex: 1; min-width: 0;",
+                       h5(style = "text-align:center; color:#2c3e50;", 
+                          "Sex ratio of migrant stock"),
+                       plotlyOutput("age_plot_sexratio", height = "400px")
+                     ),
+                     
+                     div(
+                       style = "width: 140px; flex-shrink: 0; visibility: hidden;",
+                       tags$div(style = "font-size: 15px;", " ")
+                     )
                    ),
                    
                    # Plot3: Non-refugee migrant stock estimates
                    div(
-                     style = "flex-grow: 1;",
-                     h5(style = "text-align:center; color:#2c3e50; margin-top:15px;", 
-                        "Non-refugee migrant stock estimates"),
-                     plotlyOutput("age_plot_nonrefugee", height = "400px")
+                     style = "display: flex; align-items: flex-start; gap: 10px; margin-top: 15px;",
+                     
+                     div(
+                       style = "flex: 1; min-width: 0;",
+                       h5(style = "text-align:center; color:#2c3e50;", 
+                          "Non-refugee migrant stock estimates"),
+                       plotlyOutput("age_plot_nonrefugee", height = "400px")
+                     ),
+                     
+                     div(
+                       style = "width: 140px; flex-shrink: 0; visibility: hidden;",
+                       tags$div(style = "font-size: 15px;", " ")
+                     )
                    )
                  )
         ), # close tab panel for "Age"
@@ -1043,7 +1082,9 @@ server <- function(input, output, session) {
                                        LocName = loc_name,
                                        input = input, 
                                        MS_age = data$DA, # empirical data
-                                       MS_modelled = data$DA_modelled)
+                                       MS_modelled = data$DA_modelled,
+                                       ms2020_age = ms2020age %>% dplyr::filter(LocID == loc_id))
+      
       
       Message <- paste(c(data$Warnings$Warning_Age), collapse = "\n")
       
@@ -1089,7 +1130,8 @@ server <- function(input, output, session) {
                                              LocName     = loc_name,
                                              input       = input,
                                              MS_age      = data$DA,
-                                             MS_modelled = data$DA_modelled)
+                                             MS_modelled = data$DA_modelled,
+                                             ms2020_age = ms2020age %>% dplyr::filter(LocID == loc_id))
       
       ply <- ggplotly(p_age_sexratio, tooltip = "text") %>%
         layout(
