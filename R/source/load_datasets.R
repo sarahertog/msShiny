@@ -9,6 +9,7 @@ load(file.path(ms_dir, "GlobalFiles", "ms_previous", "ms2024org.rda")) # by dest
 # MS 2020 - migrant stock estimates (total, by sex, by origin and by age) from the 2020 revision
 load(file.path(ms_dir, "GlobalFiles", "ms_previous", "ms2020.rda")) # totals by sex
 load(file.path(ms_dir, "GlobalFiles", "ms_previous", "ms2020org.rda")) # by destination and origin
+load(file.path(ms_dir, "GlobalFiles", "ms_previous", "ms2020age.rda")) # by age group
 
 # # UNHCR refugees and asylum seekers
 # load(file.path(ms_dir, "GlobalFiles", "unhcr", "rfg_origin_dest_1Jan.rda"))

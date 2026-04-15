@@ -235,6 +235,21 @@ ui <- fluidPage(
                      plotlyOutput("MigShare_plot", height = "100%")
                    )
                  ),
+                 div(
+                   style = "padding: 10px 0; border-top: 1px solid #ddd; margin-top: 10px;",
+                   div(
+                     style = "display: flex; justify-content: center; margin-bottom: 10px;"
+                   )
+                 ),
+                 div(
+                   class = "plot-container",
+                   style = "display: flex; flex-direction: column; height: 90%;",
+                   # Plot
+                   div(
+                     style = "flex-grow: 1;",
+                     plotlyOutput("GrowthRate_plot", height = "100%")
+                   )
+                 ),
         ), # close tab panel for "Total migrant stock"
         ##############################################################
         ##############################################################
@@ -378,6 +393,21 @@ ui <- fluidPage(
                    div(
                      style = "flex-grow: 1;",
                      plotlyOutput("origin_propF_plot", height = "100%")
+                   )
+                 ),
+                 div(
+                   style = "padding: 10px 0; border-top: 1px solid #ddd; margin-top: 10px;",
+                   div(
+                     style = "display: flex; justify-content: center; margin-bottom: 10px;"
+                   )
+                 ),
+                 div(
+                   class = "plot-container",
+                   style = "display: flex; flex-direction: column; height: 90%;",
+                   # Plot
+                   div(
+                     style = "flex-grow: 1;",
+                     plotlyOutput("origin_share_plot", height = "100%")
                    )
                  ),
         ), # close tab panel for "Origins (one at a time)"
@@ -743,6 +773,111 @@ server <- function(input, output, session) {
       )
   })
   
+  ##############################################################
+  ##############################################################
+  # Annual growth rate of non-refugee migrant stock
+  plot_GrowthRate <- reactive({
+    req(input$country_name != "")
+    data <- current_data()
+    req(data)
+    
+    selected_loc <- locs[locs$LocName == input$country_name, ]
+    if (nrow(selected_loc) > 0) {
+      loc_id   <- selected_loc$LocID
+      loc_name <- selected_loc$LocName
+      
+      df <- data$DT_modelled$df
+      req(!is.null(df) && nrow(df) > 1)
+      
+      df_clean <- df %>%
+        dplyr::rename_with(~ tolower(.x)) %>%
+        dplyr::mutate(
+          year = as.numeric(year),
+          value = as.numeric(value),
+          refugees = as.numeric(refugees),
+          non_refugee = value - refugees,
+          # Create a grouping variable: "annual" for integer years, "semi" for half-years
+          year_group = ifelse(year == floor(year), "annual", "semi")
+        ) %>%
+        dplyr::arrange(year_group, year)
+      
+      # Calculate growth rate within each group separately
+      gr_df <- df_clean %>%
+        dplyr::group_by(year_group) %>%
+        dplyr::mutate(
+          growth_rate = (non_refugee / dplyr::lag(non_refugee) - 1) * 100
+        ) %>%
+        dplyr::ungroup() %>%
+        dplyr::arrange(year) %>%
+        dplyr::filter(
+          !is.na(growth_rate),
+          !is.infinite(growth_rate),
+          year >= min(input$YearRange_Total),
+          year <= max(input$YearRange_Total)
+        )
+      
+      if(nrow(gr_df) == 0) return(NULL)
+      
+      # Create base plot
+      p_gr <- ggplot(gr_df, aes(x = year, y = growth_rate,
+                                text = paste("\u200b",
+                                             "Growth rate", "\n",
+                                             "Year:", sprintf("%.1f", year), "\n",
+                                             "Rate:", sprintf("%.2f%%", growth_rate), "\n")))+
+        geom_line(aes(group = 1), linetype = "dashed", color = "black", linewidth = 1) +
+        geom_point(color = "black", size = 1.5) +
+        geom_hline(yintercept = 0, color = "grey50", linewidth = 0.4, linetype = "dashed") +
+        scale_x_continuous(
+          breaks = seq(floor(min(gr_df$year)), ceiling(max(gr_df$year)), by = 5),
+          limits = c(min(input$YearRange_Total), max(input$YearRange_Total)),
+          minor_breaks = seq(floor(min(gr_df$year)), ceiling(max(gr_df$year)), by = 0.5),
+          labels = function(x) round(x)
+        ) +
+        scale_y_continuous(labels = function(x) paste0(x, "%")) +
+        labs(x = "Year", y = "Annual growth rate (%)") +
+        theme_light() +
+        theme(
+          plot.margin = unit(c(1, 1, 1, 1), "cm"),
+          aspect.ratio = 0.6,
+          panel.grid.minor.x = element_line(color = "grey90", linewidth = 0.3)
+        )
+      
+      # Convert to plotly
+      ply <- ggplotly(p_gr, tooltip = "text", dynamicTicks = TRUE) %>%
+        layout(
+          hoverlabel = list(
+            bgcolor = "white",
+            font = list(size = 12),
+            bordercolor = "gray80"
+          ),
+          hovermode = "closest",
+          title = list(
+            text = paste0(loc_name,
+                          '<br>',
+                          '<sup>',
+                          'Annual growth rate of non-refugee migrant stock ',
+                          '</sup>'),
+            x = 0.05,
+            xanchor = "left"
+          )
+        )
+      
+      return(ply)
+    } else {
+      return(NULL)
+    }
+  })
+  
+  output$GrowthRate_plot <- NULL
+  output$GrowthRate_plot <- renderPlotly({
+    p <- plot_GrowthRate()
+    req(p)
+    p %>%
+      layout(
+        autosize = TRUE,
+        height = session$clientData$output_country_plot_width * 0.6
+      )
+  })
   
   ##############################################################
   ##############################################################
@@ -1032,13 +1167,145 @@ server <- function(input, output, session) {
                                      paste0("Proportion female among international migrant stock originating from ",myorigin),'</sup>'))
         )
       
-      ply <- list(ply_origin = ply_origin,
-                  ply_origin_propF = ply_origin_propF)
+      
+      # Compute origin share of total migrant stock
+      # Get total migrant stock for the destination
+      dt_total <- data$DT_modelled$df %>%
+        dplyr::rename_with(~ tolower(.x)) %>%
+        dplyr::mutate(year = as.numeric(year)) %>%  # Ensure year is numeric
+        dplyr::filter(
+          year >= min(input$YearRange_OriginOne),
+          year <= max(input$YearRange_OriginOne)
+        ) %>%
+        dplyr::select(year, total_value = value, total_refugees = refugees) %>%
+        dplyr::arrange(year)
+      
+      do_origin_share <- data$DO_modelled$df %>%
+        dplyr::rename_with(~ tolower(.x)) %>%
+        dplyr::mutate(year = as.numeric(year)) %>%  # Ensure year is numeric
+        dplyr::filter(
+          origin == myorigin,
+          sex == mysex,
+          year >= min(input$YearRange_OriginOne),
+          year <= max(input$YearRange_OriginOne)
+        ) %>%
+        dplyr::arrange(year)
+      
+      # Print to console to check data
+      cat("=== Origin Share Debug ===\n")
+      cat("myorigin:", myorigin, "\n")
+      cat("mysex:", mysex, "\n")
+      cat("dt_total rows:", nrow(dt_total), "\n")
+      cat("do_origin_share rows:", nrow(do_origin_share), "\n")
+      if(nrow(do_origin_share) > 0) {
+        cat("do_origin_share sample:\n")
+        print(head(do_origin_share))
+      }
+      if(nrow(dt_total) > 0) {
+        cat("dt_total sample:\n")
+        print(head(dt_total))
+      }
+      
+      if (nrow(do_origin_share) > 0 && nrow(dt_total) > 0) {
+        share_df <- do_origin_share %>%
+          dplyr::left_join(dt_total, by = "year") %>%
+          dplyr::mutate(
+            # Calculate non-refugee stock for origin
+            origin_nonrefugee = value - refugees,
+            # Calculate total non-refugee stock for destination
+            total_nonrefugee = total_value - total_refugees,
+            # Calculate shares
+            share_all = value / total_value * 100,
+            share_nonrefugee = origin_nonrefugee / total_nonrefugee * 100,
+            # Create hover text as a separate column
+            hover_all = paste(
+              "All migrants (incl. refugees)",
+              "\nYear:", sprintf("%.1f", year),
+              "\nShare:", sprintf("%.2f%%", share_all)
+            ),
+            hover_nonrefugee = paste(
+              "Non-refugee migrants",
+              "\nYear:", sprintf("%.1f", year),
+              "\nShare:", sprintf("%.2f%%", share_nonrefugee)
+            )
+          ) %>%
+          dplyr::filter(
+            !is.na(share_all), 
+            !is.na(share_nonrefugee), 
+            is.finite(share_all), 
+            is.finite(share_nonrefugee),
+            total_value > 0,
+            total_nonrefugee > 0
+          )
+        
+        cat("share_df rows after join and filter:", nrow(share_df), "\n")
+        if(nrow(share_df) > 0) {
+          cat("share_df sample:\n")
+          print(head(share_df[, c("year", "value", "refugees", "origin_nonrefugee", "total_value", "total_refugees", "total_nonrefugee", "share_all", "share_nonrefugee")]))
+        }
+        
+        # Only create plot if we have valid data
+        if (nrow(share_df) > 0) {
+          # Create plot with separate layers for lines and points with hover text
+          p_origin_share <- ggplot() +
+            # Lines
+            geom_line(data = share_df, aes(x = year, y = share_all), 
+                      color = "black", linewidth = 1) +
+            geom_line(data = share_df, aes(x = year, y = share_nonrefugee), 
+                      color = "black", linetype = "dashed", linewidth = 1) +
+            # Points with hover text
+            geom_point(data = share_df, aes(x = year, y = share_all, text = hover_all), 
+                       color = "black", size = 1.5) +
+            geom_point(data = share_df, aes(x = year, y = share_nonrefugee, text = hover_nonrefugee), 
+                       color = "black", size = 1.5) +
+            scale_x_continuous(
+              breaks = seq(floor(min(share_df$year)), ceiling(max(share_df$year)), by = 5),
+              limits = c(min(input$YearRange_OriginOne), max(input$YearRange_OriginOne)),
+              minor_breaks = seq(floor(min(share_df$year)), ceiling(max(share_df$year)), by = 0.5)
+            ) +
+            scale_y_continuous(labels = function(x) paste0(sprintf("%.1f", x), "%")) +
+            labs(x = "Year", y = "Share of total migrant stock (%)") +
+            theme_light() +
+            theme(
+              plot.margin = unit(c(1, 1, 1, 1), "cm"), 
+              aspect.ratio = 0.6,
+              panel.grid.minor.x = element_line(color = "grey90", linewidth = 0.3)
+            )
+          
+          ply_origin_share <- ggplotly(p_origin_share, tooltip = "text", dynamicTicks = TRUE) %>%
+            layout(
+              hoverlabel = list(bgcolor = "white", font = list(size = 12), bordercolor = "gray80"),
+              hovermode = "closest",
+              title = list(
+                text = paste0(loc_name,
+                              '<br>',
+                              '<sup>',
+                              paste0("Migrant stock from ", myorigin, " as % of total migrant stock in destination (", mysex, ")"),
+                              '</sup>'),
+                x = 0.06,
+                xanchor = "left"
+              )
+            )
+          
+        } else {
+          ply_origin_share <- NULL
+          cat("WARNING: No valid data after filtering\n")
+        }
+      } else {
+        ply_origin_share <- NULL
+        cat("WARNING: do_origin_share or dt_total is empty\n")
+      }
+      
+      
+      ply <- list(ply_origin       = ply_origin,
+                  ply_origin_propF = ply_origin_propF,
+                  ply_origin_share = ply_origin_share)
       return(ply)
     } else {
       return(NULL)
     }
   })
+  
   # render the plot for Shiny display
   output$origin_plot <- NULL
   output$origin_plot <- renderPlotly({
@@ -1052,6 +1319,15 @@ server <- function(input, output, session) {
   output$origin_propF_plot <- NULL
   output$origin_propF_plot <- renderPlotly({
     plot_origin()$ply_origin_propF %>%
+      layout(
+        autosize = TRUE,
+        height = session$clientData$output_country_plot_width * 0.6
+      )
+  })
+  
+  output$origin_share_plot <- NULL
+  output$origin_share_plot <- renderPlotly({
+    plot_origin()$ply_origin_share %>%
       layout(
         autosize = TRUE,
         height = session$clientData$output_country_plot_width * 0.6
@@ -1388,35 +1664,43 @@ server <- function(input, output, session) {
     tryCatch({
       if (!is.null(data$DF_modelled) && !is.null(data$DF_modelled$df)) {
         df_mod <- data$DF_modelled$df
-        yr_col  <- intersect(c("year","Year"), names(df_mod))[1]
-        val_col <- intersect(c("value","Value"), names(df_mod))[1]
+        yr_col <- intersect(c("year","Year"), names(df_mod))[1]
         
-        if (!is.na(yr_col) && !is.na(val_col)) {
-          pf_series <- df_mod %>%
-            dplyr::select(year = !!yr_col, value = !!val_col) %>%
-            dplyr::filter(year >= yrs_out_start, year <= yrs_out_end, !is.na(value)) %>%
+        # Check required columns exist
+        if (!is.na(yr_col) && all(c("IM_noRfgF", "IM_noRfgM") %in% names(df_mod))) {
+          
+          # Calculate proportion female among non-refugee stock
+          pf_nr <- df_mod %>%
+            dplyr::select(year = !!yr_col, IM_noRfgF, IM_noRfgM) %>%
+            dplyr::filter(year >= yrs_out_start, year <= yrs_out_end) %>%
+            dplyr::mutate(
+              total_nonrefugee = IM_noRfgF + IM_noRfgM,
+              propF_nonrefugee = ifelse(total_nonrefugee > 0, 
+                                        IM_noRfgF / total_nonrefugee * 100, 
+                                        NA_real_)
+            ) %>%
+            dplyr::filter(!is.na(propF_nonrefugee)) %>%
             dplyr::arrange(year)
           
-          if (nrow(pf_series) >= 2) {
-            # scale to percentage if stored as proportion (0–1)
-            if (max(pf_series$value, na.rm = TRUE) <= 1) {
-              pf_series$value <- pf_series$value * 100
-            }
-            range_pp <- max(pf_series$value, na.rm = TRUE) - min(pf_series$value, na.rm = TRUE)
+          if (nrow(pf_nr) >= 2) {
+            range_pp <- max(pf_nr$propF_nonrefugee, na.rm = TRUE) - 
+              min(pf_nr$propF_nonrefugee, na.rm = TRUE)
             
             if (range_pp > 10) {
-              yr_min <- pf_series$year[which.min(pf_series$value)]
-              yr_max <- pf_series$year[which.max(pf_series$value)]
+              yr_min <- pf_nr$year[which.min(pf_nr$propF_nonrefugee)]
+              yr_max <- pf_nr$year[which.max(pf_nr$propF_nonrefugee)]
+              
               flags[["check3"]] <- list(
                 severity = "warning",
                 icon     = "triangle-exclamation",
-                title    = "Large swing in proportion female",
+                title    = "Large swing in proportion female (non-refugee stock)",
                 detail   = paste0(
-                  "The estimated proportion female changes by <strong>",
+                  "The proportion female among the <strong>non-refugee</strong> migrant stock ",
+                  "changes by <strong>",
                   round(range_pp, 1), " percentage points</strong> over the estimation period ",
-                  "(min: ", round(min(pf_series$value, na.rm=TRUE),1), "% in ", yr_min, 
-                  "; max: ", round(max(pf_series$value, na.rm=TRUE),1), "% in ", yr_max, "). ",
-                  "A swing greater than 10 pp may indicate data inconsistencies or an unusual demographic shift."
+                  "(min: ", round(min(pf_nr$propF_nonrefugee, na.rm = TRUE), 1), "% in ", yr_min,
+                  "; max: ", round(max(pf_nr$propF_nonrefugee, na.rm = TRUE), 1), "% in ", yr_max, "). ",
+                  "A swing greater than 10 pp may indicate data inconsistencies or model convergence issues."
                 )
               )
             }
@@ -1615,7 +1899,7 @@ server <- function(input, output, session) {
     check_names <- c(
       "check1" = "Migrant share (incl. refugees) > 30% of population",
       "check2" = "Deviation from MS2024 > 20%",
-      "check3" = "Proportion female swing > 10 pp",
+      "check3" = "Proportion female swing > 10 pp (non-refugee stock)",
       "check4" = "Origins missing from new estimates",
       "check5" = "Top-5 origins changed since MS2024"
     )
@@ -1664,6 +1948,3 @@ server <- function(input, output, session) {
 
 # Run the Shiny App
 shinyApp(ui = ui, server = server)
-
-
-
