@@ -12,11 +12,17 @@
 
 
 parse_age_start <- function(age_group_str) {
-  if (age_group_str %in% c("75+", "85+")) return(as.numeric(substr(age_group_str, 1, 2)))
+  if (grepl("\\+", age_group_str)) {
+    return(as.numeric(substr(age_group_str, 1, nchar(age_group_str)-1)))
+  }
   # broad groups do not map to a single age_start; return NA
   if (age_group_str %in% c("Total","0-14","15-24","25-49",
-                           "50+","60+","70+","80+")) return(NA)
-  as.numeric(strsplit(age_group_str, "-")[[1]][1])
+                           "50+","60+","65+","70+","75+","80+","85+",
+                           "90+","95+","100+")) return(NA)
+  if (grepl("-", age_group_str)) {
+    return(as.numeric(strsplit(age_group_str, "-")[[1]][1]))
+  }
+  return(NA)
 }
 
 
@@ -24,20 +30,28 @@ parse_age_start <- function(age_group_str) {
 # Works for both broad groups (e.g. "0-14") and standard 5-year groups (e.g. "20-24")
 age_group_to_starts <- function(age_group_str) {
   switch(age_group_str,
-         "Total"  = seq(0,  85, by = 5),
+         "Total"  = seq(0,  100, by = 5),
          "0-14"   = c(0, 5, 10),
          "15-24"  = c(15, 20),
          "25-49"  = seq(25, 45, by = 5),
-         "50+"    = seq(50, 85, by = 5),
-         "60+"    = seq(60, 85, by = 5),
-         "70+"    = seq(70, 85, by = 5),
-         "80+"    = c(80, 85),
-         # Standard 5-year group: single start value
+         "50+"    = seq(50, 100, by = 5),
+         "60+"    = seq(60, 100, by = 5),
+         "65+"    = seq(65, 100, by = 5),
+         "70+"    = seq(70, 100, by = 5),
+         "75+"    = c(75, 80, 85, 90, 95, 100),
+         "80+"    = c(80, 85, 90, 95, 100),
+         "85+"    = c(85, 90, 95, 100),
+         "90+"    = c(90, 95, 100),
+         "95+"    = c(95, 100),
+         "100+"   = 100,
          {
-           if (age_group_str %in% c("75+", "85+")) {
-             return(as.numeric(substr(age_group_str, 1, 2)))
+           if (grepl("-", age_group_str)) {
+             as.numeric(strsplit(age_group_str, "-")[[1]][1])
+           } else if (grepl("\\+", age_group_str)) {
+             as.numeric(substr(age_group_str, 1, nchar(age_group_str)-1))
+           } else {
+             NA
            }
-           as.numeric(strsplit(age_group_str, "-")[[1]][1])
          }
   )
 }
@@ -46,40 +60,44 @@ age_group_to_starts <- function(age_group_str) {
 # return TRUE if the selected age group is a broad group
 is_broad_group <- function(age_group_str) {
   age_group_str %in% c("Total","0-14","15-24","25-49",
-                       "50+","60+","70+","80+")
+                       "50+","60+","65+","70+","75+","80+","85+",
+                       "90+","95+","100+")
 }
 
 
 # aggregate empirical DA data to a broad age group
-# Sums DataValue across all constituent 5-year age groups,
 aggregate_emp_to_broad <- function(df, age_starts, age_label) {
-  # Keep only rows whose AgeLabel corresponds to a standard 5-year group.
-  # This prevents "Total" or other broad-group rows (which share the same
-  # AgeStart values) from being double-counted in the sum.
-  standard_5yr_labels <- c(
+  standard_labels <- c(
     "0-4","5-9","10-14","15-19","20-24","25-29","30-34","35-39",
-    "40-44","45-49","50-54","55-59","60-64","65-69","70-74","75-79",
-    "80-84","85+"
+    "40-44","45-49","50-54","55-59","60-64","65-69","65+","70-74","75-79","75+", 
+    "80-84","80+","85-89","85+","90-94","90+","95-99","95+","100+"
   )
+  
   df %>%
     dplyr::filter(
       AgeStart %in% age_starts,
-      AgeLabel %in% standard_5yr_labels
+      AgeLabel %in% standard_labels
     ) %>%
     group_by(MS_SeriesID, TimeMid, SexName, SexID, Definition,
              DataSourceShortName, Include, non_standard, DataProcess) %>%  
     summarise(
       DataValue = sum(DataValue, na.rm = TRUE),
-      AgeLabel  = age_label,       # use the selected label e.g. "0-14"
+      AgeLabel  = age_label,      
       AgeStart  = min(AgeStart),
-      AgeEnd    = max(AgeStart) + 5,
+      AgeEnd    = if(age_label == "Total") {
+        -1 
+      } else if (grepl("\\+$", age_label)) {
+        0  
+      } else {
+        max(AgeStart) + 5 
+      },
       .groups   = "drop"
     )
 }
 
 
 # aggregate modelled DA_modelled$df to a broad age group
-# Sums value and refugees across all constituent 5-year age groups,
+# Sums value and refugees across all constituent age groups,
 # grouped by year and sex
 # Modified to handle missing 'refugees' column (for ms2020age data)
 aggregate_mod_to_broad <- function(df, age_starts) {
@@ -119,8 +137,6 @@ ms_plot_age_stock <- function(loc_id, LocName, input, MS_age, MS_modelled,
   # Prepare empirical data
   if (!is.null(MS_age)) {
     
-    # Broad group: aggregate across constituent 5-year groups;
-    # Standard 5-year group: filter to single age_start value
     if (is_broad) {
       indata_emp <- MS_age %>%
         dplyr::filter(TimeMid >= yr_min, TimeMid <= yr_max) %>%
@@ -523,8 +539,11 @@ ms_plot_age_stock <- function(loc_id, LocName, input, MS_age, MS_modelled,
   }
   
   
-  # MS2020 data processing with standardized column names and sex codes
-  if (!is.null(ms2020_age) && isTRUE(input$ms2020) && !(age_label %in% c("75-79", "80-84", "85+"))) {
+  # MS2020 data: exclude open-ended groups that cannot be reliably aggregated
+  # from MS2020 data (which only covers up to 75-79 / 80-84)
+  ms2020_excluded_groups <- c("75-79", "80-84")
+  
+  if (!is.null(ms2020_age) && isTRUE(input$ms2020) && !(age_label %in% ms2020_excluded_groups)) {
     
     # Standardize ms2020age column names to match function conventions
     # Convert numeric sex codes (0/1/2) to character strings
@@ -729,7 +748,9 @@ ms_plot_age_sexratio <- function(loc_id, LocName, input, MS_age, MS_modelled,
   }
   
   # Plot MS2020 sex ratio
-  if (!is.null(ms2020_age) && isTRUE(input$ms2020) && !(age_label %in% c("75-79", "80-84", "85+"))) {
+  ms2020_excluded_groups <- c("75-79", "80-84")
+  
+  if (!is.null(ms2020_age) && isTRUE(input$ms2020) && !(age_label %in% ms2020_excluded_groups)) {
     
     # Standardize MS2020 data column names and sex codes (consistent with Plot1)
     ms2020_std <- ms2020_age %>%
